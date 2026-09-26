@@ -1,0 +1,1848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#080808" />
+  <meta
+    name="description"
+    content="Sambhav AI — Build beautiful websites with artificial intelligence."
+  />
+
+  <title>Sambhav AI — AI Website Builder</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #080808;
+      --panel: #0d0d0d;
+      --panel-2: #111111;
+      --border: #222222;
+      --border-light: #2b2b2b;
+      --text: #f5f5f5;
+      --muted: #8a8a8a;
+      --green: #b6ff3b;
+      --green-dark: #8ed41f;
+      --danger: #ff5c5c;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      overflow-x: hidden;
+    }
+
+    button,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    /* =========================
+       DOT BACKGROUND
+    ========================= */
+
+    .dot-background {
+      position: fixed;
+      inset: 0;
+      z-index: -5;
+      pointer-events: none;
+
+      background-image: radial-gradient(
+        rgba(255, 255, 255, 0.14) 1px,
+        transparent 1px
+      );
+
+      background-size: 22px 22px;
+
+      mask-image: linear-gradient(
+        to bottom,
+        black 0%,
+        rgba(0, 0, 0, 0.85) 45%,
+        transparent 100%
+      );
+
+      opacity: 0.3;
+    }
+
+    .ambient {
+      position: fixed;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: rgba(182, 255, 59, 0.035);
+      filter: blur(120px);
+      top: -300px;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+      z-index: -4;
+    }
+
+    /* =========================
+       NAVBAR
+    ========================= */
+
+    .navbar {
+      height: 68px;
+      width: 100%;
+      border-bottom: 1px solid var(--border);
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      padding: 0 28px;
+
+      background: rgba(8, 8, 8, 0.82);
+      backdrop-filter: blur(18px);
+
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .logo {
+      width: 31px;
+      height: 31px;
+
+      display: grid;
+      place-items: center;
+
+      border-radius: 7px;
+
+      background: var(--green);
+      color: #080808;
+
+      font-size: 16px;
+      font-weight: 950;
+
+      box-shadow: 0 0 30px rgba(182, 255, 59, 0.12);
+    }
+
+    .brand-name {
+      font-weight: 750;
+      letter-spacing: -0.4px;
+      font-size: 16px;
+    }
+
+    .brand-beta {
+      font-size: 10px;
+      color: #777;
+      border: 1px solid #282828;
+      border-radius: 5px;
+      padding: 3px 5px;
+      margin-left: 2px;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+
+      color: #777;
+      font-size: 12px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+
+      box-shadow: 0 0 9px rgba(182, 255, 59, 0.6);
+    }
+
+    .nav-btn {
+      border: 1px solid var(--border);
+      background: #101010;
+      color: #aaa;
+
+      padding: 8px 12px;
+      border-radius: 7px;
+
+      font-size: 12px;
+
+      transition: 0.2s;
+    }
+
+    .nav-btn:hover {
+      border-color: #3a3a3a;
+      color: white;
+      background: #151515;
+    }
+
+    /* =========================
+       HERO
+    ========================= */
+
+    .hero {
+      width: min(1000px, calc(100% - 30px));
+      margin: 0 auto;
+
+      padding: 92px 0 45px;
+
+      text-align: center;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+
+      padding: 6px 10px;
+
+      border: 1px solid #242424;
+      border-radius: 999px;
+
+      background: rgba(255, 255, 255, 0.025);
+
+      color: #969696;
+      font-size: 11px;
+      font-weight: 600;
+
+      margin-bottom: 22px;
+    }
+
+    .eyebrow-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .hero h1 {
+      font-size: clamp(42px, 7vw, 78px);
+      line-height: 0.98;
+      letter-spacing: -5px;
+      font-weight: 850;
+
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .hero h1 span {
+      color: var(--green);
+    }
+
+    .hero p {
+      max-width: 610px;
+      margin: 24px auto 0;
+
+      color: var(--muted);
+
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    /* =========================
+       BUILDER
+    ========================= */
+
+    .builder {
+      width: min(920px, calc(100% - 28px));
+      margin: 0 auto;
+    }
+
+    .composer {
+      border: 1px solid var(--border-light);
+      background: rgba(12, 12, 12, 0.92);
+
+      border-radius: 14px;
+
+      box-shadow:
+        0 30px 90px rgba(0, 0, 0, 0.45),
+        inset 0 1px rgba(255, 255, 255, 0.025);
+
+      overflow: hidden;
+    }
+
+    .composer-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      padding: 11px 14px;
+
+      border-bottom: 1px solid #1c1c1c;
+    }
+
+    .model {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      color: #999;
+      font-size: 11px;
+    }
+
+    .model-icon {
+      width: 19px;
+      height: 19px;
+
+      display: grid;
+      place-items: center;
+
+      border: 1px solid #303030;
+      border-radius: 5px;
+
+      color: var(--green);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .model-name {
+      color: #c5c5c5;
+    }
+
+    .model-version {
+      color: #606060;
+    }
+
+    .composer-body {
+      padding: 15px;
+    }
+
+    #prompt {
+      width: 100%;
+      min-height: 155px;
+
+      resize: vertical;
+
+      border: none;
+      outline: none;
+
+      background: transparent;
+
+      color: #eeeeee;
+
+      font-size: 15px;
+      line-height: 1.65;
+
+      font-family: inherit;
+    }
+
+    #prompt::placeholder {
+      color: #5d5d5d;
+    }
+
+    .composer-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      margin-top: 10px;
+    }
+
+    .composer-tools {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .tool {
+      height: 30px;
+      padding: 0 9px;
+
+      display: flex;
+      align-items: center;
+      gap: 5px;
+
+      border: 1px solid #222;
+      background: #111;
+
+      border-radius: 6px;
+
+      color: #777;
+      font-size: 11px;
+    }
+
+    .tool:hover {
+      color: #bbb;
+      border-color: #333;
+    }
+
+    .generate {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+
+      border: none;
+      border-radius: 7px;
+
+      background: var(--green);
+      color: #080808;
+
+      padding: 9px 14px;
+
+      font-size: 12px;
+      font-weight: 800;
+
+      transition: 0.2s;
+    }
+
+    .generate:hover {
+      background: #c5ff62;
+      transform: translateY(-1px);
+    }
+
+    .generate:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .generate-icon {
+      font-size: 13px;
+    }
+
+    /* =========================
+       EXAMPLES
+    ========================= */
+
+    .examples {
+      margin-top: 13px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      flex-wrap: wrap;
+
+      gap: 7px;
+    }
+
+    .examples-label {
+      color: #555;
+      font-size: 11px;
+      margin-right: 3px;
+    }
+
+    .example {
+      border: 1px solid #202020;
+      background: #0d0d0d;
+
+      color: #777;
+
+      padding: 6px 9px;
+
+      border-radius: 6px;
+
+      font-size: 10px;
+
+      transition: 0.2s;
+    }
+
+    .example:hover {
+      color: #bbb;
+      border-color: #343434;
+      background: #121212;
+    }
+
+    /* =========================
+       LOADING
+    ========================= */
+
+    .loading {
+      display: none;
+
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+
+      margin: 20px auto;
+
+      color: #777;
+      font-size: 11px;
+    }
+
+    .loading.show {
+      display: flex;
+    }
+
+    .loader {
+      width: 13px;
+      height: 13px;
+
+      border-radius: 50%;
+
+      border: 2px solid #292929;
+      border-top-color: var(--green);
+
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* =========================
+       ERROR
+    ========================= */
+
+    .error {
+      display: none;
+
+      margin: 14px 0;
+
+      padding: 11px 13px;
+
+      border: 1px solid rgba(255, 92, 92, 0.25);
+      background: rgba(255, 92, 92, 0.06);
+
+      border-radius: 7px;
+
+      color: #ff9999;
+
+      font-size: 11px;
+    }
+
+    .error.show {
+      display: block;
+    }
+
+    /* =========================
+       PREVIEW
+    ========================= */
+
+    .preview-section {
+      width: min(1200px, calc(100% - 28px));
+
+      margin: 65px auto 90px;
+
+      display: none;
+    }
+
+    .preview-section.show {
+      display: block;
+    }
+
+    .preview-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      margin-bottom: 12px;
+    }
+
+    .preview-heading {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .preview-heading h2 {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .preview-live {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+
+      color: #666;
+      font-size: 10px;
+    }
+
+    .live-dot {
+      width: 5px;
+      height: 5px;
+
+      background: var(--green);
+      border-radius: 50%;
+    }
+
+    .preview-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .preview-btn {
+      border: 1px solid #222;
+      background: #0e0e0e;
+
+      color: #888;
+
+      padding: 7px 10px;
+
+      border-radius: 6px;
+
+      font-size: 10px;
+
+      transition: 0.2s;
+    }
+
+    .preview-btn:hover {
+      color: white;
+      border-color: #383838;
+    }
+
+    .browser {
+      border: 1px solid #252525;
+      border-radius: 11px;
+
+      overflow: hidden;
+
+      background: white;
+
+      box-shadow: 0 40px 100px rgba(0, 0, 0, 0.45);
+    }
+
+    .browser-bar {
+      height: 37px;
+
+      display: flex;
+      align-items: center;
+
+      padding: 0 11px;
+
+      gap: 6px;
+
+      background: #151515;
+      border-bottom: 1px solid #252525;
+    }
+
+    .browser-dot {
+      width: 8px;
+      height: 8px;
+
+      border-radius: 50%;
+
+      background: #3b3b3b;
+    }
+
+    .browser-url {
+      margin-left: 9px;
+
+      height: 22px;
+      max-width: 420px;
+
+      display: flex;
+      align-items: center;
+
+      padding: 0 9px;
+
+      border-radius: 5px;
+
+      background: #1c1c1c;
+
+      color: #626262;
+
+      font-size: 9px;
+    }
+
+    #preview {
+      width: 100%;
+      height: 680px;
+
+      display: block;
+
+      border: none;
+
+      background: white;
+    }
+
+    /* =========================
+       EMPTY STATE
+    ========================= */
+
+    .empty {
+      width: min(1000px, calc(100% - 28px));
+
+      min-height: 280px;
+
+      margin: 65px auto 90px;
+
+      border: 1px dashed #202020;
+      border-radius: 12px;
+
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+
+      text-align: center;
+    }
+
+    .empty-symbol {
+      width: 45px;
+      height: 45px;
+
+      display: grid;
+      place-items: center;
+
+      border: 1px solid #242424;
+      border-radius: 9px;
+
+      color: #666;
+
+      margin-bottom: 12px;
+    }
+
+    .empty strong {
+      color: #777;
+      font-size: 12px;
+    }
+
+    .empty p {
+      margin-top: 5px;
+      color: #4e4e4e;
+      font-size: 10px;
+    }
+
+    /* =========================
+       FOOTER
+    ========================= */
+
+    footer {
+      border-top: 1px solid #171717;
+
+      padding: 22px;
+
+      text-align: center;
+
+      color: #4b4b4b;
+
+      font-size: 10px;
+    }
+
+    /* =========================
+       TOAST
+    ========================= */
+
+    .toast {
+      position: fixed;
+
+      bottom: 20px;
+      left: 50%;
+
+      transform: translate(-50%, 20px);
+
+      opacity: 0;
+
+      pointer-events: none;
+
+      padding: 9px 13px;
+
+      border: 1px solid #303030;
+
+      background: #151515;
+
+      color: #ccc;
+
+      border-radius: 7px;
+
+      font-size: 11px;
+
+      z-index: 100;
+
+      transition: 0.25s;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    /* =========================
+       MOBILE
+    ========================= */
+
+    @media (max-width: 700px) {
+
+      .navbar {
+        padding: 0 15px;
+      }
+
+      .status {
+        display: none;
+      }
+
+      .nav-btn {
+        display: none;
+      }
+
+      .hero {
+        padding-top: 65px;
+      }
+
+      .hero h1 {
+        letter-spacing: -3px;
+      }
+
+      .hero p {
+        font-size: 14px;
+      }
+
+      .composer-top {
+        padding: 10px;
+      }
+
+      .composer-body {
+        padding: 12px;
+      }
+
+      #prompt {
+        min-height: 175px;
+        font-size: 14px;
+      }
+
+      .composer-tools {
+        display: none;
+      }
+
+      .composer-bottom {
+        justify-content: flex-end;
+      }
+
+      .examples {
+        justify-content: flex-start;
+      }
+
+      .examples-label {
+        width: 100%;
+      }
+
+      .preview-top {
+        align-items: flex-start;
+        gap: 10px;
+        flex-direction: column;
+      }
+
+      .preview-actions {
+        width: 100%;
+      }
+
+      .preview-btn {
+        flex: 1;
+      }
+
+      #preview {
+        height: 580px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Background -->
+  <div class="dot-background"></div>
+  <div class="ambient"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+
+    <div class="brand">
+      <div class="logo">S</div>
+
+      <div class="brand-name">
+        Sambhav AI
+      </div>
+
+      <div class="brand-beta">
+        BETA
+      </div>
+    </div>
+
+    <div class="nav-right">
+
+      <div class="status">
+        <div class="status-dot"></div>
+        AI Online
+      </div>
+
+      <button
+        class="nav-btn"
+        id="clearButton"
+      >
+        Clear
+      </button>
+
+    </div>
+
+  </nav>
+
+
+  <!-- Main -->
+  <main>
+
+    <!-- Hero -->
+    <section class="hero">
+
+      <div class="eyebrow">
+        <div class="eyebrow-dot"></div>
+        AI-powered website generation
+      </div>
+
+      <h1>
+        Build websites
+        <br />
+        with <span>AI.</span>
+      </h1>
+
+      <p>
+        Describe your idea in plain language.
+        Sambhav AI turns it into a beautiful,
+        responsive website in seconds.
+      </p>
+
+    </section>
+
+
+    <!-- Builder -->
+    <section class="builder">
+
+      <div class="composer">
+
+        <div class="composer-top">
+
+          <div class="model">
+
+            <div class="model-icon">
+              S
+            </div>
+
+            <span class="model-name">
+              Sambhav AI
+            </span>
+
+            <span class="model-version">
+              · Qwen
+            </span>
+
+          </div>
+
+          <div
+            style="
+              color:#555;
+              font-size:10px;
+            "
+          >
+            Website Builder
+          </div>
+
+        </div>
+
+
+        <div class="composer-body">
+
+          <textarea
+            id="prompt"
+            placeholder="Describe the website you want...
+
+Example: Create a premium dark SaaS website for an AI startup called NovaAI with a hero section, features, pricing, testimonials and FAQ."
+          ></textarea>
+
+
+          <div class="composer-bottom">
+
+            <div class="composer-tools">
+
+              <button class="tool">
+                ＋ Section
+              </button>
+
+              <button class="tool">
+                ◇ Design
+              </button>
+
+              <button class="tool">
+                ↗ Responsive
+              </button>
+
+            </div>
+
+
+            <button
+              class="generate"
+              id="generateButton"
+            >
+              <span class="generate-icon">✦</span>
+              Generate
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- Examples -->
+      <div class="examples">
+
+        <span class="examples-label">
+          Try:
+        </span>
+
+        <button
+          class="example"
+          data-prompt="Create a premium dark portfolio website for a professional web developer. Include a navbar, hero section, skills, projects, about section, testimonials, contact form and footer. Use subtle animations and a modern futuristic design."
+        >
+          Developer Portfolio
+        </button>
+
+        <button
+          class="example"
+          data-prompt="Create a modern restaurant website for a premium Indian restaurant. Include a beautiful hero section, menu cards, restaurant story, gallery, customer reviews, opening hours, reservation button and contact section."
+        >
+          Restaurant
+        </button>
+
+        <button
+          class="example"
+          data-prompt="Create a professional SaaS landing page for an AI productivity platform. Include hero, features, statistics, pricing cards, testimonials, FAQ and a strong call to action. Use a sleek dark design."
+        >
+          SaaS
+        </button>
+
+        <button
+          class="example"
+          data-prompt="Create a premium fashion ecommerce landing page with a luxury black and white design. Include navbar, hero banner, featured products, categories, testimonials, newsletter and footer."
+        >
+          Fashion
+        </button>
+
+      </div>
+
+
+      <!-- Loading -->
+      <div
+        class="loading"
+        id="loading"
+      >
+
+        <div class="loader"></div>
+
+        <span id="loadingText">
+          Sambhav AI is building your website...
+        </span>
+
+      </div>
+
+
+      <!-- Error -->
+      <div
+        class="error"
+        id="error"
+      ></div>
+
+    </section>
+
+
+    <!-- Empty Preview -->
+    <section
+      class="empty"
+      id="emptyPreview"
+    >
+
+      <div class="empty-symbol">
+        ◇
+      </div>
+
+      <strong>
+        Your generated website will appear here
+      </strong>
+
+      <p>
+        Describe your idea above to get started.
+      </p>
+
+    </section>
+
+
+    <!-- Preview -->
+    <section
+      class="preview-section"
+      id="previewSection"
+    >
+
+      <div class="preview-top">
+
+        <div class="preview-heading">
+
+          <h2 id="websiteTitle">
+            Generated Website
+          </h2>
+
+          <div class="preview-live">
+            <div class="live-dot"></div>
+            Live Preview
+          </div>
+
+        </div>
+
+
+        <div class="preview-actions">
+
+          <button
+            class="preview-btn"
+            id="refreshButton"
+          >
+            ↻ Refresh
+          </button>
+
+          <button
+            class="preview-btn"
+            id="openButton"
+          >
+            ↗ Open
+          </button>
+
+          <button
+            class="preview-btn"
+            id="downloadButton"
+          >
+            ↓ Download
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <div class="browser">
+
+        <div class="browser-bar">
+
+          <div class="browser-dot"></div>
+          <div class="browser-dot"></div>
+          <div class="browser-dot"></div>
+
+          <div
+            class="browser-url"
+            id="browserUrl"
+          >
+            sambhav.ai / preview
+          </div>
+
+        </div>
+
+
+        <iframe
+          id="preview"
+          title="Generated website preview"
+          sandbox="allow-scripts"
+        ></iframe>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <footer>
+    Sambhav AI · Build anything with AI
+  </footer>
+
+
+  <div
+    class="toast"
+    id="toast"
+  ></div>
+
+
+  <script>
+
+    /* =====================================
+       CONFIG
+    ===================================== */
+
+    const BACKEND_URL =
+      "https://website-builder-backend-nu.vercel.app/api/generate";
+
+
+    /* =====================================
+       ELEMENTS
+    ===================================== */
+
+    const promptInput =
+      document.getElementById("prompt");
+
+    const generateButton =
+      document.getElementById("generateButton");
+
+    const loading =
+      document.getElementById("loading");
+
+    const loadingText =
+      document.getElementById("loadingText");
+
+    const errorBox =
+      document.getElementById("error");
+
+    const previewSection =
+      document.getElementById("previewSection");
+
+    const emptyPreview =
+      document.getElementById("emptyPreview");
+
+    const preview =
+      document.getElementById("preview");
+
+    const websiteTitle =
+      document.getElementById("websiteTitle");
+
+    const browserUrl =
+      document.getElementById("browserUrl");
+
+    const refreshButton =
+      document.getElementById("refreshButton");
+
+    const openButton =
+      document.getElementById("openButton");
+
+    const downloadButton =
+      document.getElementById("downloadButton");
+
+    const clearButton =
+      document.getElementById("clearButton");
+
+    const toast =
+      document.getElementById("toast");
+
+
+    let currentWebsite = null;
+
+
+    /* =====================================
+       TOAST
+    ===================================== */
+
+    function showToast(message) {
+
+      toast.textContent = message;
+
+      toast.classList.add("show");
+
+      setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2200);
+
+    }
+
+
+    /* =====================================
+       ERROR
+    ===================================== */
+
+    function showError(message) {
+
+      errorBox.textContent = message;
+
+      errorBox.classList.add("show");
+
+    }
+
+
+    function hideError() {
+
+      errorBox.textContent = "";
+
+      errorBox.classList.remove("show");
+
+    }
+
+
+    /* =====================================
+       LOADING
+    ===================================== */
+
+    function setLoading(state) {
+
+      loading.classList.toggle(
+        "show",
+        state
+      );
+
+      generateButton.disabled =
+        state;
+
+      if (state) {
+
+        generateButton.innerHTML =
+          '<span class="generate-icon">◌</span> Building...';
+
+      } else {
+
+        generateButton.innerHTML =
+          '<span class="generate-icon">✦</span> Generate';
+
+      }
+
+    }
+
+
+    /* =====================================
+       CREATE WEBSITE DOCUMENT
+    ===================================== */
+
+    function createWebsiteDocument(
+      website
+    ) {
+
+      const html =
+        website.html || "";
+
+      const css =
+        website.css || "";
+
+      const js =
+        website.js || "";
+
+
+      return `
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+/>
+
+<title>
+${website.title || "Generated Website"}
+</title>
+
+<style>
+
+${css}
+
+</style>
+
+</head>
+
+<body>
+
+${html}
+
+<script>
+
+${js.replace(
+  /<\/script>/gi,
+  "<\\/script>"
+)}
+
+<\/script>
+
+</body>
+
+</html>
+`;
+
+    }
+
+
+    /* =====================================
+       RENDER WEBSITE
+    ===================================== */
+
+    function renderWebsite(
+      website
+    ) {
+
+      currentWebsite =
+        website;
+
+
+      const documentContent =
+        createWebsiteDocument(
+          website
+        );
+
+
+      preview.srcdoc =
+        documentContent;
+
+
+      websiteTitle.textContent =
+        website.title ||
+        "Generated Website";
+
+
+      browserUrl.textContent =
+        "sambhav.ai / " +
+        (
+          website.title ||
+          "generated-site"
+        )
+          .toLowerCase()
+          .replace(
+            /[^a-z0-9]+/g,
+            "-"
+          )
+          .replace(
+            /^-|-$/g,
+            ""
+          );
+
+
+      emptyPreview.style.display =
+        "none";
+
+
+      previewSection.classList.add(
+        "show"
+      );
+
+
+      setTimeout(() => {
+
+        previewSection.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+
+      }, 150);
+
+    }
+
+
+    /* =====================================
+       GENERATE
+    ===================================== */
+
+    async function generateWebsite() {
+
+      const prompt =
+        promptInput.value.trim();
+
+
+      if (!prompt) {
+
+        showError(
+          "Describe the website you want to build first."
+        );
+
+        promptInput.focus();
+
+        return;
+
+      }
+
+
+      hideError();
+
+      setLoading(true);
+
+
+      const messages = [
+
+        "Understanding your idea...",
+
+        "Planning the website structure...",
+
+        "Designing the interface...",
+
+        "Writing HTML and CSS...",
+
+        "Adding JavaScript...",
+
+        "Finishing your website..."
+
+      ];
+
+
+      let messageIndex = 0;
+
+
+      loadingText.textContent =
+        messages[0];
+
+
+      const timer =
+        setInterval(() => {
+
+          messageIndex =
+            (messageIndex + 1) %
+            messages.length;
+
+          loadingText.textContent =
+            messages[messageIndex];
+
+        }, 1400);
+
+
+      try {
+
+        const response =
+          await fetch(
+            BACKEND_URL,
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json"
+              },
+
+              body: JSON.stringify({
+                prompt: prompt
+              })
+            }
+          );
+
+
+        const data =
+          await response.json();
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            data.error ||
+            "Backend request failed."
+          );
+
+        }
+
+
+        if (
+          !data.html ||
+          !data.css ||
+          typeof data.html !== "string" ||
+          typeof data.css !== "string" ||
+          typeof data.js !== "string"
+        ) {
+
+          throw new Error(
+            "The AI returned an invalid website."
+          );
+
+        }
+
+
+        renderWebsite(data);
+
+
+        showToast(
+          "Website generated successfully."
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          "Generation error:",
+          error
+        );
+
+
+        showError(
+          error.message ||
+          "Something went wrong. Please try again."
+        );
+
+
+      } finally {
+
+        clearInterval(timer);
+
+        setLoading(false);
+
+      }
+
+    }
+
+
+    /* =====================================
+       GENERATE BUTTON
+    ===================================== */
+
+    generateButton.addEventListener(
+      "click",
+      generateWebsite
+    );
+
+
+    /* =====================================
+       CTRL + ENTER
+    ===================================== */
+
+    promptInput.addEventListener(
+      "keydown",
+      (event) => {
+
+        if (
+          (event.ctrlKey ||
+            event.metaKey) &&
+          event.key === "Enter"
+        ) {
+
+          event.preventDefault();
+
+          generateWebsite();
+
+        }
+
+      }
+    );
+
+
+    /* =====================================
+       EXAMPLE BUTTONS
+    ===================================== */
+
+    document
+      .querySelectorAll(".example")
+      .forEach((button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            promptInput.value =
+              button.dataset.prompt;
+
+            promptInput.focus();
+
+          }
+        );
+
+      });
+
+
+    /* =====================================
+       REFRESH
+    ===================================== */
+
+    refreshButton.addEventListener(
+      "click",
+      () => {
+
+        if (!currentWebsite)
+          return;
+
+
+        renderWebsite(
+          currentWebsite
+        );
+
+
+        showToast(
+          "Preview refreshed."
+        );
+
+      }
+    );
+
+
+    /* =====================================
+       OPEN
+    ===================================== */
+
+    openButton.addEventListener(
+      "click",
+      () => {
+
+        if (!currentWebsite)
+          return;
+
+
+        const html =
+          createWebsiteDocument(
+            currentWebsite
+          );
+
+
+        const blob =
+          new Blob(
+            [html],
+            {
+              type: "text/html"
+            }
+          );
+
+
+        const url =
+          URL.createObjectURL(
+            blob
+          );
+
+
+        window.open(
+          url,
+          "_blank"
+        );
+
+
+        setTimeout(() => {
+
+          URL.revokeObjectURL(
+            url
+          );
+
+        }, 10000);
+
+      }
+    );
+
+
+    /* =====================================
+       DOWNLOAD
+    ===================================== */
+
+    downloadButton.addEventListener(
+      "click",
+      () => {
+
+        if (!currentWebsite)
+          return;
+
+
+        const html =
+          createWebsiteDocument(
+            currentWebsite
+          );
+
+
+        const blob =
+          new Blob(
+            [html],
+            {
+              type: "text/html"
+            }
+          );
+
+
+        const url =
+          URL.createObjectURL(
+            blob
+          );
+
+
+        const link =
+          document.createElement(
+            "a"
+          );
+
+
+        link.href =
+          url;
+
+
+        const filename =
+          (
+            currentWebsite.title ||
+            "sambhav-website"
+          )
+            .toLowerCase()
+            .replace(
+              /[^a-z0-9]+/g,
+              "-"
+            )
+            .replace(
+              /^-|-$/g,
+              ""
+            );
+
+
+        link.download =
+          `${filename || "website"}.html`;
+
+
+        document.body.appendChild(
+          link
+        );
+
+
+        link.click();
+
+        link.remove();
+
+
+        URL.revokeObjectURL(
+          url
+        );
+
+
+        showToast(
+          "Website downloaded."
+        );
+
+      }
+    );
+
+
+    /* =====================================
+       CLEAR
+    ===================================== */
+
+    clearButton.addEventListener(
+      "click",
+      () => {
+
+        promptInput.value =
+          "";
+
+        hideError();
+
+        currentWebsite =
+          null;
+
+        preview.srcdoc =
+          "";
+
+        previewSection.classList.remove(
+          "show"
+        );
+
+        emptyPreview.style.display =
+          "flex";
+
+        promptInput.focus();
+
+        showToast(
+          "Builder cleared."
+        );
+
+      }
+    );
+
+  </script>
+
+</body>
+</html>
