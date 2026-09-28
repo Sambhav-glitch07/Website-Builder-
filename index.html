@@ -2,1000 +2,133 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#080808" />
   <meta
-    name="description"
-    content="Sambhav AI — Build beautiful websites with artificial intelligence."
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
   />
 
-  <title>Sambhav AI — AI Website Builder</title>
+  <title>Sambhav AI — Website Builder</title>
 
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    :root {
-      --bg: #080808;
-      --panel: #0d0d0d;
-      --panel-2: #111111;
-      --border: #222222;
-      --border-light: #2b2b2b;
-      --text: #f5f5f5;
-      --muted: #8a8a8a;
-      --green: #b6ff3b;
-      --green-dark: #8ed41f;
-      --danger: #ff5c5c;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
-    body {
-      min-height: 100vh;
-      background: var(--bg);
-      color: var(--text);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
-      overflow-x: hidden;
-    }
-
-    button,
-    textarea {
-      font: inherit;
-    }
-
-    button {
-      cursor: pointer;
-    }
-
-    /* =========================
-       DOT BACKGROUND
-    ========================= */
-
-    .dot-background {
-      position: fixed;
-      inset: 0;
-      z-index: -5;
-      pointer-events: none;
-
-      background-image: radial-gradient(
-        rgba(255, 255, 255, 0.14) 1px,
-        transparent 1px
-      );
-
-      background-size: 22px 22px;
-
-      mask-image: linear-gradient(
-        to bottom,
-        black 0%,
-        rgba(0, 0, 0, 0.85) 45%,
-        transparent 100%
-      );
-
-      opacity: 0.3;
-    }
-
-    .ambient {
-      position: fixed;
-      width: 600px;
-      height: 600px;
-      border-radius: 50%;
-      background: rgba(182, 255, 59, 0.035);
-      filter: blur(120px);
-      top: -300px;
-      left: 50%;
-      transform: translateX(-50%);
-      pointer-events: none;
-      z-index: -4;
-    }
-
-    /* =========================
-       NAVBAR
-    ========================= */
-
-    .navbar {
-      height: 68px;
-      width: 100%;
-      border-bottom: 1px solid var(--border);
-
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-
-      padding: 0 28px;
-
-      background: rgba(8, 8, 8, 0.82);
-      backdrop-filter: blur(18px);
-
-      position: sticky;
-      top: 0;
-      z-index: 50;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-    }
-
-    .logo {
-      width: 31px;
-      height: 31px;
-
-      display: grid;
-      place-items: center;
-
-      border-radius: 7px;
-
-      background: var(--green);
-      color: #080808;
-
-      font-size: 16px;
-      font-weight: 950;
-
-      box-shadow: 0 0 30px rgba(182, 255, 59, 0.12);
-    }
-
-    .brand-name {
-      font-weight: 750;
-      letter-spacing: -0.4px;
-      font-size: 16px;
-    }
-
-    .brand-beta {
-      font-size: 10px;
-      color: #777;
-      border: 1px solid #282828;
-      border-radius: 5px;
-      padding: 3px 5px;
-      margin-left: 2px;
-    }
-
-    .nav-right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .status {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-
-      color: #777;
-      font-size: 12px;
-    }
-
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--green);
-
-      box-shadow: 0 0 9px rgba(182, 255, 59, 0.6);
-    }
-
-    .nav-btn {
-      border: 1px solid var(--border);
-      background: #101010;
-      color: #aaa;
-
-      padding: 8px 12px;
-      border-radius: 7px;
-
-      font-size: 12px;
-
-      transition: 0.2s;
-    }
-
-    .nav-btn:hover {
-      border-color: #3a3a3a;
-      color: white;
-      background: #151515;
-    }
-
-    /* =========================
-       HERO
-    ========================= */
-
-    .hero {
-      width: min(1000px, calc(100% - 30px));
-      margin: 0 auto;
-
-      padding: 92px 0 45px;
-
-      text-align: center;
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-
-      padding: 6px 10px;
-
-      border: 1px solid #242424;
-      border-radius: 999px;
-
-      background: rgba(255, 255, 255, 0.025);
-
-      color: #969696;
-      font-size: 11px;
-      font-weight: 600;
-
-      margin-bottom: 22px;
-    }
-
-    .eyebrow-dot {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--green);
-    }
-
-    .hero h1 {
-      font-size: clamp(42px, 7vw, 78px);
-      line-height: 0.98;
-      letter-spacing: -5px;
-      font-weight: 850;
-
-      max-width: 900px;
-      margin: auto;
-    }
-
-    .hero h1 span {
-      color: var(--green);
-    }
-
-    .hero p {
-      max-width: 610px;
-      margin: 24px auto 0;
-
-      color: var(--muted);
-
-      font-size: 16px;
-      line-height: 1.7;
-    }
-
-    /* =========================
-       BUILDER
-    ========================= */
-
-    .builder {
-      width: min(920px, calc(100% - 28px));
-      margin: 0 auto;
-    }
-
-    .composer {
-      border: 1px solid var(--border-light);
-      background: rgba(12, 12, 12, 0.92);
-
-      border-radius: 14px;
-
-      box-shadow:
-        0 30px 90px rgba(0, 0, 0, 0.45),
-        inset 0 1px rgba(255, 255, 255, 0.025);
-
-      overflow: hidden;
-    }
-
-    .composer-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-
-      padding: 11px 14px;
-
-      border-bottom: 1px solid #1c1c1c;
-    }
-
-    .model {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-
-      color: #999;
-      font-size: 11px;
-    }
-
-    .model-icon {
-      width: 19px;
-      height: 19px;
-
-      display: grid;
-      place-items: center;
-
-      border: 1px solid #303030;
-      border-radius: 5px;
-
-      color: var(--green);
-      font-size: 10px;
-      font-weight: 800;
-    }
-
-    .model-name {
-      color: #c5c5c5;
-    }
-
-    .model-version {
-      color: #606060;
-    }
-
-    .composer-body {
-      padding: 15px;
-    }
-
-    #prompt {
-      width: 100%;
-      min-height: 155px;
-
-      resize: vertical;
-
-      border: none;
-      outline: none;
-
-      background: transparent;
-
-      color: #eeeeee;
-
-      font-size: 15px;
-      line-height: 1.65;
-
-      font-family: inherit;
-    }
-
-    #prompt::placeholder {
-      color: #5d5d5d;
-    }
-
-    .composer-bottom {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-
-      margin-top: 10px;
-    }
-
-    .composer-tools {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-    }
-
-    .tool {
-      height: 30px;
-      padding: 0 9px;
-
-      display: flex;
-      align-items: center;
-      gap: 5px;
-
-      border: 1px solid #222;
-      background: #111;
-
-      border-radius: 6px;
-
-      color: #777;
-      font-size: 11px;
-    }
-
-    .tool:hover {
-      color: #bbb;
-      border-color: #333;
-    }
-
-    .generate {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-
-      border: none;
-      border-radius: 7px;
-
-      background: var(--green);
-      color: #080808;
-
-      padding: 9px 14px;
-
-      font-size: 12px;
-      font-weight: 800;
-
-      transition: 0.2s;
-    }
-
-    .generate:hover {
-      background: #c5ff62;
-      transform: translateY(-1px);
-    }
-
-    .generate:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .generate-icon {
-      font-size: 13px;
-    }
-
-    /* =========================
-       EXAMPLES
-    ========================= */
-
-    .examples {
-      margin-top: 13px;
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      flex-wrap: wrap;
-
-      gap: 7px;
-    }
-
-    .examples-label {
-      color: #555;
-      font-size: 11px;
-      margin-right: 3px;
-    }
-
-    .example {
-      border: 1px solid #202020;
-      background: #0d0d0d;
-
-      color: #777;
-
-      padding: 6px 9px;
-
-      border-radius: 6px;
-
-      font-size: 10px;
-
-      transition: 0.2s;
-    }
-
-    .example:hover {
-      color: #bbb;
-      border-color: #343434;
-      background: #121212;
-    }
-
-    /* =========================
-       LOADING
-    ========================= */
-
-    .loading {
-      display: none;
-
-      align-items: center;
-      justify-content: center;
-      gap: 9px;
-
-      margin: 20px auto;
-
-      color: #777;
-      font-size: 11px;
-    }
-
-    .loading.show {
-      display: flex;
-    }
-
-    .loader {
-      width: 13px;
-      height: 13px;
-
-      border-radius: 50%;
-
-      border: 2px solid #292929;
-      border-top-color: var(--green);
-
-      animation: spin 0.75s linear infinite;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    /* =========================
-       ERROR
-    ========================= */
-
-    .error {
-      display: none;
-
-      margin: 14px 0;
-
-      padding: 11px 13px;
-
-      border: 1px solid rgba(255, 92, 92, 0.25);
-      background: rgba(255, 92, 92, 0.06);
-
-      border-radius: 7px;
-
-      color: #ff9999;
-
-      font-size: 11px;
-    }
-
-    .error.show {
-      display: block;
-    }
-
-    /* =========================
-       PREVIEW
-    ========================= */
-
-    .preview-section {
-      width: min(1200px, calc(100% - 28px));
-
-      margin: 65px auto 90px;
-
-      display: none;
-    }
-
-    .preview-section.show {
-      display: block;
-    }
-
-    .preview-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-
-      margin-bottom: 12px;
-    }
-
-    .preview-heading {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-    }
-
-    .preview-heading h2 {
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .preview-live {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-
-      color: #666;
-      font-size: 10px;
-    }
-
-    .live-dot {
-      width: 5px;
-      height: 5px;
-
-      background: var(--green);
-      border-radius: 50%;
-    }
-
-    .preview-actions {
-      display: flex;
-      gap: 6px;
-    }
-
-    .preview-btn {
-      border: 1px solid #222;
-      background: #0e0e0e;
-
-      color: #888;
-
-      padding: 7px 10px;
-
-      border-radius: 6px;
-
-      font-size: 10px;
-
-      transition: 0.2s;
-    }
-
-    .preview-btn:hover {
-      color: white;
-      border-color: #383838;
-    }
-
-    .browser {
-      border: 1px solid #252525;
-      border-radius: 11px;
-
-      overflow: hidden;
-
-      background: white;
-
-      box-shadow: 0 40px 100px rgba(0, 0, 0, 0.45);
-    }
-
-    .browser-bar {
-      height: 37px;
-
-      display: flex;
-      align-items: center;
-
-      padding: 0 11px;
-
-      gap: 6px;
-
-      background: #151515;
-      border-bottom: 1px solid #252525;
-    }
-
-    .browser-dot {
-      width: 8px;
-      height: 8px;
-
-      border-radius: 50%;
-
-      background: #3b3b3b;
-    }
-
-    .browser-url {
-      margin-left: 9px;
-
-      height: 22px;
-      max-width: 420px;
-
-      display: flex;
-      align-items: center;
-
-      padding: 0 9px;
-
-      border-radius: 5px;
-
-      background: #1c1c1c;
-
-      color: #626262;
-
-      font-size: 9px;
-    }
-
-    #preview {
-      width: 100%;
-      height: 680px;
-
-      display: block;
-
-      border: none;
-
-      background: white;
-    }
-
-    /* =========================
-       EMPTY STATE
-    ========================= */
-
-    .empty {
-      width: min(1000px, calc(100% - 28px));
-
-      min-height: 280px;
-
-      margin: 65px auto 90px;
-
-      border: 1px dashed #202020;
-      border-radius: 12px;
-
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-
-      text-align: center;
-    }
-
-    .empty-symbol {
-      width: 45px;
-      height: 45px;
-
-      display: grid;
-      place-items: center;
-
-      border: 1px solid #242424;
-      border-radius: 9px;
-
-      color: #666;
-
-      margin-bottom: 12px;
-    }
-
-    .empty strong {
-      color: #777;
-      font-size: 12px;
-    }
-
-    .empty p {
-      margin-top: 5px;
-      color: #4e4e4e;
-      font-size: 10px;
-    }
-
-    /* =========================
-       FOOTER
-    ========================= */
-
-    footer {
-      border-top: 1px solid #171717;
-
-      padding: 22px;
-
-      text-align: center;
-
-      color: #4b4b4b;
-
-      font-size: 10px;
-    }
-
-    /* =========================
-       TOAST
-    ========================= */
-
-    .toast {
-      position: fixed;
-
-      bottom: 20px;
-      left: 50%;
-
-      transform: translate(-50%, 20px);
-
-      opacity: 0;
-
-      pointer-events: none;
-
-      padding: 9px 13px;
-
-      border: 1px solid #303030;
-
-      background: #151515;
-
-      color: #ccc;
-
-      border-radius: 7px;
-
-      font-size: 11px;
-
-      z-index: 100;
-
-      transition: 0.25s;
-    }
-
-    .toast.show {
-      opacity: 1;
-      transform: translate(-50%, 0);
-    }
-
-    /* =========================
-       MOBILE
-    ========================= */
-
-    @media (max-width: 700px) {
-
-      .navbar {
-        padding: 0 15px;
-      }
-
-      .status {
-        display: none;
-      }
-
-      .nav-btn {
-        display: none;
-      }
-
-      .hero {
-        padding-top: 65px;
-      }
-
-      .hero h1 {
-        letter-spacing: -3px;
-      }
-
-      .hero p {
-        font-size: 14px;
-      }
-
-      .composer-top {
-        padding: 10px;
-      }
-
-      .composer-body {
-        padding: 12px;
-      }
-
-      #prompt {
-        min-height: 175px;
-        font-size: 14px;
-      }
-
-      .composer-tools {
-        display: none;
-      }
-
-      .composer-bottom {
-        justify-content: flex-end;
-      }
-
-      .examples {
-        justify-content: flex-start;
-      }
-
-      .examples-label {
-        width: 100%;
-      }
-
-      .preview-top {
-        align-items: flex-start;
-        gap: 10px;
-        flex-direction: column;
-      }
-
-      .preview-actions {
-        width: 100%;
-      }
-
-      .preview-btn {
-        flex: 1;
-      }
-
-      #preview {
-        height: 580px;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="./style.css">
 </head>
 
 <body>
 
-  <!-- Background -->
-  <div class="dot-background"></div>
-  <div class="ambient"></div>
+  <!-- =====================================================
+       LANDING
+  ====================================================== -->
 
-  <!-- Navbar -->
-  <nav class="navbar">
+  <section id="landingScreen" class="landing-screen">
 
-    <div class="brand">
-      <div class="logo">S</div>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="ambient ambient-three"></div>
 
-      <div class="brand-name">
-        Sambhav AI
+    <div class="landing-grid"></div>
+
+    <header class="landing-nav">
+      <div class="brand">
+        <div class="brand-mark">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+        <div>
+          <strong>Sambhav</strong>
+          <small>AI</small>
+        </div>
       </div>
 
-      <div class="brand-beta">
-        BETA
-      </div>
-    </div>
-
-    <div class="nav-right">
-
-      <div class="status">
-        <div class="status-dot"></div>
-        AI Online
+      <div class="nav-center">
+        <span class="nav-pill">
+          <i></i>
+          AI WEBSITE BUILDER
+        </span>
       </div>
 
-      <button
-        class="nav-btn"
-        id="clearButton"
-      >
-        Clear
-      </button>
-
-    </div>
-
-  </nav>
-
-
-  <!-- Main -->
-  <main>
-
-    <!-- Hero -->
-    <section class="hero">
-
-      <div class="eyebrow">
-        <div class="eyebrow-dot"></div>
-        AI-powered website generation
+      <div class="nav-right">
+        <span class="status-dot"></span>
+        <span>Online</span>
       </div>
-
-      <h1>
-        Build websites
-        <br />
-        with <span>AI.</span>
-      </h1>
-
-      <p>
-        Describe your idea in plain language.
-        Sambhav AI turns it into a beautiful,
-        responsive website in seconds.
-      </p>
-
-    </section>
+    </header>
 
 
-    <!-- Builder -->
-    <section class="builder">
+    <main class="landing-main">
 
-      <div class="composer">
+      <div class="hero-copy">
 
-        <div class="composer-top">
+        <div class="eyebrow">
+          <span class="eyebrow-line"></span>
+          BUILD WITHOUT LIMITS
+          <span class="eyebrow-line"></span>
+        </div>
 
-          <div class="model">
+        <h1>
+          Turn ideas into
+          <span>websites.</span>
+        </h1>
 
-            <div class="model-icon">
-              S
+        <p class="hero-description">
+          Describe what you want. Sambhav generates a complete,
+          responsive website ready for you to visually edit.
+        </p>
+
+
+        <div class="prompt-shell">
+
+          <textarea
+            id="promptInput"
+            maxlength="12000"
+            placeholder="Describe the website you want to build..."
+            spellcheck="false"
+          ></textarea>
+
+          <div class="prompt-bottom">
+
+            <div class="prompt-hint">
+              <span class="spark">✦</span>
+              Be creative. Sambhav handles the rest.
             </div>
 
-            <span class="model-name">
-              Sambhav AI
-            </span>
-
-            <span class="model-version">
-              · Qwen
-            </span>
+            <button id="generateBtn" class="generate-button">
+              <span class="generate-icon">✦</span>
+              <span>Generate</span>
+              <span class="button-arrow">↗</span>
+            </button>
 
           </div>
-
-          <div
-            style="
-              color:#555;
-              font-size:10px;
-            "
-          >
-            Website Builder
-          </div>
-
         </div>
 
 
-        <div class="composer-body">
+        <div class="examples">
 
-          <textarea
-            id="prompt"
-            placeholder="Describe the website you want...
+          <span class="examples-label">TRY AN IDEA</span>
 
-Example: Create a premium dark SaaS website for an AI startup called NovaAI with a hero section, features, pricing, testimonials and FAQ."
-          ></textarea>
+          <div class="example-list">
 
+            <button class="example-chip"
+              data-prompt="Create a premium dark fashion landing page for a futuristic clothing brand. Include a cinematic hero section, product cards, bold typography, smooth gradients and a strong call to action.">
+              Fashion brand
+            </button>
 
-          <div class="composer-bottom">
+            <button class="example-chip"
+              data-prompt="Create a modern SaaS landing page for an AI productivity application. Include a beautiful hero, feature cards, pricing section, testimonials and a strong CTA.">
+              SaaS landing
+            </button>
 
-            <div class="composer-tools">
+            <button class="example-chip"
+              data-prompt="Create a futuristic portfolio website for a creative developer. Use a dark premium aesthetic, animated-looking sections, project cards, skills and contact section.">
+              Developer portfolio
+            </button>
 
-              <button class="tool">
-                ＋ Section
-              </button>
-
-              <button class="tool">
-                ◇ Design
-              </button>
-
-              <button class="tool">
-                ↗ Responsive
-              </button>
-
-            </div>
-
-
-            <button
-              class="generate"
-              id="generateButton"
-            >
-              <span class="generate-icon">✦</span>
-              Generate
+            <button class="example-chip"
+              data-prompt="Create a premium coffee brand website with a cinematic hero, product showcase, story section, menu cards and a beautiful footer.">
+              Coffee brand
             </button>
 
           </div>
@@ -1005,132 +138,232 @@ Example: Create a premium dark SaaS website for an AI startup called NovaAI with
       </div>
 
 
-      <!-- Examples -->
-      <div class="examples">
+      <!-- HERO VISUAL -->
 
-        <span class="examples-label">
-          Try:
-        </span>
+      <div class="hero-visual">
 
-        <button
-          class="example"
-          data-prompt="Create a premium dark portfolio website for a professional web developer. Include a navbar, hero section, skills, projects, about section, testimonials, contact form and footer. Use subtle animations and a modern futuristic design."
-        >
-          Developer Portfolio
-        </button>
+        <div class="visual-orbit orbit-one"></div>
+        <div class="visual-orbit orbit-two"></div>
+        <div class="visual-orbit orbit-three"></div>
 
-        <button
-          class="example"
-          data-prompt="Create a modern restaurant website for a premium Indian restaurant. Include a beautiful hero section, menu cards, restaurant story, gallery, customer reviews, opening hours, reservation button and contact section."
-        >
-          Restaurant
-        </button>
+        <div class="visual-glow"></div>
 
-        <button
-          class="example"
-          data-prompt="Create a professional SaaS landing page for an AI productivity platform. Include hero, features, statistics, pricing cards, testimonials, FAQ and a strong call to action. Use a sleek dark design."
-        >
-          SaaS
-        </button>
+        <div class="core">
 
-        <button
-          class="example"
-          data-prompt="Create a premium fashion ecommerce landing page with a luxury black and white design. Include navbar, hero banner, featured products, categories, testimonials, newsletter and footer."
-        >
-          Fashion
-        </button>
+          <div class="core-ring ring-a"></div>
+          <div class="core-ring ring-b"></div>
+          <div class="core-ring ring-c"></div>
 
-      </div>
-
-
-      <!-- Loading -->
-      <div
-        class="loading"
-        id="loading"
-      >
-
-        <div class="loader"></div>
-
-        <span id="loadingText">
-          Sambhav AI is building your website...
-        </span>
-
-      </div>
-
-
-      <!-- Error -->
-      <div
-        class="error"
-        id="error"
-      ></div>
-
-    </section>
-
-
-    <!-- Empty Preview -->
-    <section
-      class="empty"
-      id="emptyPreview"
-    >
-
-      <div class="empty-symbol">
-        ◇
-      </div>
-
-      <strong>
-        Your generated website will appear here
-      </strong>
-
-      <p>
-        Describe your idea above to get started.
-      </p>
-
-    </section>
-
-
-    <!-- Preview -->
-    <section
-      class="preview-section"
-      id="previewSection"
-    >
-
-      <div class="preview-top">
-
-        <div class="preview-heading">
-
-          <h2 id="websiteTitle">
-            Generated Website
-          </h2>
-
-          <div class="preview-live">
-            <div class="live-dot"></div>
-            Live Preview
+          <div class="core-inner">
+            <span>✦</span>
           </div>
 
         </div>
 
 
-        <div class="preview-actions">
+        <div class="floating-card card-one">
+          <span class="card-label">LAYOUT</span>
+          <strong>Responsive</strong>
+          <small>Desktop · Tablet · Mobile</small>
+        </div>
 
-          <button
-            class="preview-btn"
-            id="refreshButton"
-          >
-            ↻ Refresh
+        <div class="floating-card card-two">
+          <span class="card-label">DESIGN</span>
+          <strong>Adaptive UI</strong>
+          <small>Built from your idea</small>
+        </div>
+
+        <div class="floating-card card-three">
+          <span class="card-label">CODE</span>
+          <strong>Production Ready</strong>
+          <small>HTML · CSS · JS</small>
+        </div>
+
+      </div>
+
+    </main>
+
+
+    <footer class="landing-footer">
+
+      <div>
+        <span class="footer-dot"></span>
+        Sambhav Engine
+      </div>
+
+      <div>
+        <span>GENERATE</span>
+        <span>EDIT</span>
+        <span>EXPORT</span>
+      </div>
+
+    </footer>
+
+  </section>
+
+
+  <!-- =====================================================
+       GENERATION SCREEN
+  ====================================================== -->
+
+  <section id="generationScreen" class="generation-screen">
+
+    <canvas id="particleCanvas"></canvas>
+
+    <div class="generation-noise"></div>
+
+    <div class="generation-vignette"></div>
+
+
+    <header class="generation-top">
+
+      <div class="generation-brand">
+        <div class="mini-logo">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+        <strong>SAMBHAV</strong>
+      </div>
+
+      <div class="generation-status">
+        <span class="live-dot"></span>
+        GENERATING
+      </div>
+
+    </header>
+
+
+    <main class="generation-center">
+
+      <div class="generation-orb">
+
+        <div class="orb-ring orb-ring-1"></div>
+        <div class="orb-ring orb-ring-2"></div>
+        <div class="orb-ring orb-ring-3"></div>
+        <div class="orb-ring orb-ring-4"></div>
+
+        <div class="orb-core">
+          <span>✦</span>
+        </div>
+
+      </div>
+
+
+      <div class="generation-copy">
+
+        <div id="generationStage" class="generation-stage">
+          INITIALIZING
+        </div>
+
+        <h2 id="generationTitle">
+          Bringing your idea to life
+        </h2>
+
+        <p id="generationSubtitle">
+          Designing your digital experience...
+        </p>
+
+      </div>
+
+
+      <div class="generation-progress">
+
+        <div class="progress-track">
+          <div id="generationProgress" class="progress-fill"></div>
+        </div>
+
+        <div class="progress-meta">
+          <span id="progressText">0%</span>
+          <span>GENERATING WEBSITE</span>
+        </div>
+
+      </div>
+
+
+      <div class="generation-steps">
+
+        <div class="generation-step active" data-step="0">
+          <span>01</span>
+          <b>Understanding</b>
+        </div>
+
+        <div class="generation-step" data-step="1">
+          <span>02</span>
+          <b>Designing</b>
+        </div>
+
+        <div class="generation-step" data-step="2">
+          <span>03</span>
+          <b>Building</b>
+        </div>
+
+        <div class="generation-step" data-step="3">
+          <span>04</span>
+          <b>Finishing</b>
+        </div>
+
+      </div>
+
+    </main>
+
+
+    <footer class="generation-footer">
+      <span>POWERED BY SAMBHAV ENGINE</span>
+      <span id="generationTimer">00.0s</span>
+    </footer>
+
+  </section>
+
+
+  <!-- =====================================================
+       BUILDER
+  ====================================================== -->
+
+  <main id="builderScreen" class="builder-screen">
+
+    <header class="builder-topbar">
+
+      <div class="builder-left">
+
+        <button id="backToHomeBtn" class="icon-button" title="Back">
+          ←
+        </button>
+
+        <div class="builder-brand">
+          <div class="mini-logo">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+
+          <strong>Sambhav</strong>
+        </div>
+
+        <div class="project-divider"></div>
+
+        <button id="projectNameBtn" class="project-name">
+          Untitled Website
+        </button>
+
+      </div>
+
+
+      <div class="builder-center">
+
+        <div class="device-switcher">
+
+          <button class="device-button active" data-device="desktop" title="Desktop">
+            <span class="device-icon desktop-icon"></span>
           </button>
 
-          <button
-            class="preview-btn"
-            id="openButton"
-          >
-            ↗ Open
+          <button class="device-button" data-device="tablet" title="Tablet">
+            <span class="device-icon tablet-icon"></span>
           </button>
 
-          <button
-            class="preview-btn"
-            id="downloadButton"
-          >
-            ↓ Download
+          <button class="device-button" data-device="mobile" title="Mobile">
+            <span class="device-icon mobile-icon"></span>
           </button>
 
         </div>
@@ -1138,711 +371,363 @@ Example: Create a premium dark SaaS website for an AI startup called NovaAI with
       </div>
 
 
-      <div class="browser">
+      <div class="builder-actions">
 
-        <div class="browser-bar">
+        <button id="undoBtn" class="top-action" title="Undo">
+          ↶
+        </button>
 
-          <div class="browser-dot"></div>
-          <div class="browser-dot"></div>
-          <div class="browser-dot"></div>
+        <button id="redoBtn" class="top-action" title="Redo">
+          ↷
+        </button>
 
-          <div
-            class="browser-url"
-            id="browserUrl"
-          >
-            sambhav.ai / preview
+        <button id="refreshBtn" class="top-action" title="Refresh">
+          ↻
+        </button>
+
+        <div class="top-separator"></div>
+
+        <button id="previewBtn" class="preview-button">
+          <span>Preview</span>
+          <span>↗</span>
+        </button>
+
+        <button id="exportBtn" class="export-button">
+          Export
+        </button>
+
+      </div>
+
+    </header>
+
+
+    <div class="builder-layout">
+
+
+      <!-- LEFT SIDEBAR -->
+
+      <aside class="left-sidebar">
+
+        <div class="sidebar-tabs">
+
+          <button class="sidebar-tab active" data-panel="elements">
+            Elements
+          </button>
+
+          <button class="sidebar-tab" data-panel="layers">
+            Layers
+          </button>
+
+        </div>
+
+
+        <div id="elementsPanel" class="sidebar-panel">
+
+          <div class="panel-heading">
+            <span>INSERT</span>
+          </div>
+
+
+          <div class="element-grid">
+
+            <button class="element-card" data-add="text">
+              <span class="element-icon">T</span>
+              <strong>Text</strong>
+              <small>Heading / paragraph</small>
+            </button>
+
+            <button class="element-card" data-add="button">
+              <span class="element-icon">↗</span>
+              <strong>Button</strong>
+              <small>Call to action</small>
+            </button>
+
+            <button class="element-card" data-add="card">
+              <span class="element-icon">▣</span>
+              <strong>Card</strong>
+              <small>Content block</small>
+            </button>
+
+            <button class="element-card" data-add="section">
+              <span class="element-icon">▤</span>
+              <strong>Section</strong>
+              <small>New container</small>
+            </button>
+
+          </div>
+
+
+          <div class="panel-heading layers-heading">
+            <span>QUICK ACTIONS</span>
+          </div>
+
+
+          <button id="duplicateBtn" class="sidebar-action">
+            <span>＋</span>
+            Duplicate selected
+          </button>
+
+          <button id="deleteBtn" class="sidebar-action danger">
+            <span>⌫</span>
+            Delete selected
+          </button>
+
+
+          <div class="sidebar-tip">
+            <span>✦</span>
+            <div>
+              <strong>Manual editor</strong>
+              <small>Select any element inside the preview to edit it.</small>
+            </div>
           </div>
 
         </div>
 
 
-        <iframe
-          id="preview"
-          title="Generated website preview"
-          sandbox="allow-scripts"
-        ></iframe>
+        <div id="layersPanel" class="sidebar-panel hidden">
 
-      </div>
+          <div class="panel-heading">
+            <span>PAGE LAYERS</span>
+          </div>
 
-    </section>
+          <div id="layersList" class="layers-list">
+            <div class="layers-empty">
+              Generate a website to see layers.
+            </div>
+          </div>
+
+        </div>
+
+      </aside>
+
+
+      <!-- WORKSPACE -->
+
+      <section class="workspace">
+
+        <div class="workspace-toolbar">
+
+          <div class="workspace-title">
+            <span class="canvas-status"></span>
+            Canvas
+          </div>
+
+          <div class="workspace-info">
+            <span id="canvasSizeLabel">Responsive</span>
+          </div>
+
+        </div>
+
+
+        <div id="canvasArea" class="canvas-area">
+
+          <div id="canvasEmpty" class="canvas-empty">
+
+            <div class="empty-orb">
+              <span>✦</span>
+            </div>
+
+            <h3>Your website will appear here</h3>
+            <p>Generate a website to start editing.</p>
+
+          </div>
+
+
+          <div id="deviceFrame" class="device-frame desktop">
+
+            <iframe
+              id="websitePreview"
+              title="Website Preview"
+              sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin"
+            ></iframe>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- INSPECTOR -->
+
+      <aside class="inspector">
+
+        <div class="inspector-header">
+
+          <div>
+            <span class="inspector-kicker">INSPECTOR</span>
+            <strong id="selectedType">No selection</strong>
+          </div>
+
+          <button id="closeInspectorBtn" class="inspector-close">
+            ×
+          </button>
+
+        </div>
+
+
+        <div id="inspectorContent" class="inspector-content">
+
+          <div class="inspector-empty">
+            <div class="empty-select-icon">⌁</div>
+            <strong>Select an element</strong>
+            <p>Click something inside the website preview to edit it.</p>
+          </div>
+
+        </div>
+
+      </aside>
+
+    </div>
+
+
+    <!-- MOBILE INSPECTOR BAR -->
+
+    <div id="mobileInspectorBar" class="mobile-inspector-bar">
+
+      <span id="mobileSelectionName">Nothing selected</span>
+
+      <button id="mobileInspectorOpen">
+        Edit
+      </button>
+
+    </div>
 
   </main>
 
 
-  <footer>
-    Sambhav AI · Build anything with AI
-  </footer>
+  <!-- =====================================================
+       INSPECTOR TEMPLATE
+  ====================================================== -->
 
+  <template id="inspectorTemplate">
 
-  <div
-    class="toast"
-    id="toast"
-  ></div>
+    <div class="inspector-section">
 
+      <div class="section-title">
+        CONTENT
+      </div>
 
-  <script>
+      <label class="field-label">
+        Text
+        <textarea id="editText" class="field-textarea" rows="4"></textarea>
+      </label>
 
-    /* =====================================
-       CONFIG
-    ===================================== */
+    </div>
 
-    const BACKEND_URL =
-      "https://website-builder-backend-nu.vercel.app/api/generate";
 
+    <div class="inspector-section">
 
-    /* =====================================
-       ELEMENTS
-    ===================================== */
+      <div class="section-title">
+        TYPOGRAPHY
+      </div>
 
-    const promptInput =
-      document.getElementById("prompt");
+      <div class="field-grid">
 
-    const generateButton =
-      document.getElementById("generateButton");
+        <label class="field-label">
+          Font size
+          <input id="fontSizeInput" class="field-input" type="number" min="8" max="160">
+        </label>
 
-    const loading =
-      document.getElementById("loading");
+        <label class="field-label">
+          Weight
+          <select id="fontWeightInput" class="field-input">
+            <option value="300">Light</option>
+            <option value="400">Regular</option>
+            <option value="500">Medium</option>
+            <option value="600">Semibold</option>
+            <option value="700">Bold</option>
+            <option value="800">Extra Bold</option>
+            <option value="900">Black</option>
+          </select>
+        </label>
 
-    const loadingText =
-      document.getElementById("loadingText");
+      </div>
 
-    const errorBox =
-      document.getElementById("error");
+    </div>
 
-    const previewSection =
-      document.getElementById("previewSection");
 
-    const emptyPreview =
-      document.getElementById("emptyPreview");
+    <div class="inspector-section">
 
-    const preview =
-      document.getElementById("preview");
+      <div class="section-title">
+        COLORS
+      </div>
 
-    const websiteTitle =
-      document.getElementById("websiteTitle");
+      <div class="color-control">
 
-    const browserUrl =
-      document.getElementById("browserUrl");
+        <span>Text</span>
 
-    const refreshButton =
-      document.getElementById("refreshButton");
+        <div class="color-picker-wrap">
+          <input id="textColorInput" type="color" value="#ffffff">
+          <input id="textColorText" class="color-text-input" type="text" value="#ffffff">
+        </div>
 
-    const openButton =
-      document.getElementById("openButton");
+      </div>
 
-    const downloadButton =
-      document.getElementById("downloadButton");
 
-    const clearButton =
-      document.getElementById("clearButton");
+      <div class="color-control">
 
-    const toast =
-      document.getElementById("toast");
+        <span>Background</span>
 
+        <div class="color-picker-wrap">
+          <input id="backgroundColorInput" type="color" value="#111111">
+          <input id="backgroundColorText" class="color-text-input" type="text" value="#111111">
+        </div>
 
-    let currentWebsite = null;
+      </div>
 
+    </div>
 
-    /* =====================================
-       TOAST
-    ===================================== */
 
-    function showToast(message) {
+    <div class="inspector-section">
 
-      toast.textContent = message;
+      <div class="section-title">
+        SPACING
+      </div>
 
-      toast.classList.add("show");
+      <div class="field-grid">
 
-      setTimeout(() => {
-        toast.classList.remove("show");
-      }, 2200);
+        <label class="field-label">
+          Padding
+          <input id="paddingInput" class="field-input" type="number" min="0" max="200">
+        </label>
 
-    }
+        <label class="field-label">
+          Radius
+          <input id="radiusInput" class="field-input" type="number" min="0" max="200">
+        </label>
 
+      </div>
 
-    /* =====================================
-       ERROR
-    ===================================== */
+    </div>
 
-    function showError(message) {
 
-      errorBox.textContent = message;
+    <div class="inspector-section">
 
-      errorBox.classList.add("show");
+      <div class="section-title">
+        APPEARANCE
+      </div>
 
-    }
+      <label class="toggle-row">
+        <span>Shadow</span>
+        <input id="shadowInput" type="checkbox">
+        <span class="toggle"></span>
+      </label>
 
+    </div>
 
-    function hideError() {
+  </template>
 
-      errorBox.textContent = "";
 
-      errorBox.classList.remove("show");
+  <!-- TOAST -->
 
-    }
+  <div id="toast" class="toast">
+    <span class="toast-icon">✓</span>
+    <span id="toastText">Done</span>
+  </div>
 
 
-    /* =====================================
-       LOADING
-    ===================================== */
-
-    function setLoading(state) {
-
-      loading.classList.toggle(
-        "show",
-        state
-      );
-
-      generateButton.disabled =
-        state;
-
-      if (state) {
-
-        generateButton.innerHTML =
-          '<span class="generate-icon">◌</span> Building...';
-
-      } else {
-
-        generateButton.innerHTML =
-          '<span class="generate-icon">✦</span> Generate';
-
-      }
-
-    }
-
-
-    /* =====================================
-       CREATE WEBSITE DOCUMENT
-    ===================================== */
-
-    function createWebsiteDocument(
-      website
-    ) {
-
-      const html =
-        website.html || "";
-
-      const css =
-        website.css || "";
-
-      const js =
-        website.js || "";
-
-
-      return `
-<!DOCTYPE html>
-
-<html lang="en">
-
-<head>
-
-<meta charset="UTF-8">
-
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1.0"
-/>
-
-<title>
-${website.title || "Generated Website"}
-</title>
-
-<style>
-
-${css}
-
-</style>
-
-</head>
-
-<body>
-
-${html}
-
-<script>
-
-${js.replace(
-  /<\/script>/gi,
-  "<\\/script>"
-)}
-
-<\/script>
-
-</body>
-
-</html>
-`;
-
-    }
-
-
-    /* =====================================
-       RENDER WEBSITE
-    ===================================== */
-
-    function renderWebsite(
-      website
-    ) {
-
-      currentWebsite =
-        website;
-
-
-      const documentContent =
-        createWebsiteDocument(
-          website
-        );
-
-
-      preview.srcdoc =
-        documentContent;
-
-
-      websiteTitle.textContent =
-        website.title ||
-        "Generated Website";
-
-
-      browserUrl.textContent =
-        "sambhav.ai / " +
-        (
-          website.title ||
-          "generated-site"
-        )
-          .toLowerCase()
-          .replace(
-            /[^a-z0-9]+/g,
-            "-"
-          )
-          .replace(
-            /^-|-$/g,
-            ""
-          );
-
-
-      emptyPreview.style.display =
-        "none";
-
-
-      previewSection.classList.add(
-        "show"
-      );
-
-
-      setTimeout(() => {
-
-        previewSection.scrollIntoView({
-          behavior: "smooth",
-          block: "start"
-        });
-
-      }, 150);
-
-    }
-
-
-    /* =====================================
-       GENERATE
-    ===================================== */
-
-    async function generateWebsite() {
-
-      const prompt =
-        promptInput.value.trim();
-
-
-      if (!prompt) {
-
-        showError(
-          "Describe the website you want to build first."
-        );
-
-        promptInput.focus();
-
-        return;
-
-      }
-
-
-      hideError();
-
-      setLoading(true);
-
-
-      const messages = [
-
-        "Understanding your idea...",
-
-        "Planning the website structure...",
-
-        "Designing the interface...",
-
-        "Writing HTML and CSS...",
-
-        "Adding JavaScript...",
-
-        "Finishing your website..."
-
-      ];
-
-
-      let messageIndex = 0;
-
-
-      loadingText.textContent =
-        messages[0];
-
-
-      const timer =
-        setInterval(() => {
-
-          messageIndex =
-            (messageIndex + 1) %
-            messages.length;
-
-          loadingText.textContent =
-            messages[messageIndex];
-
-        }, 1400);
-
-
-      try {
-
-        const response =
-          await fetch(
-            BACKEND_URL,
-            {
-              method: "POST",
-
-              headers: {
-                "Content-Type":
-                  "application/json"
-              },
-
-              body: JSON.stringify({
-                prompt: prompt
-              })
-            }
-          );
-
-
-        const data =
-          await response.json();
-
-
-        if (!response.ok) {
-
-          throw new Error(
-            data.error ||
-            "Backend request failed."
-          );
-
-        }
-
-
-        if (
-          !data.html ||
-          !data.css ||
-          typeof data.html !== "string" ||
-          typeof data.css !== "string" ||
-          typeof data.js !== "string"
-        ) {
-
-          throw new Error(
-            "The AI returned an invalid website."
-          );
-
-        }
-
-
-        renderWebsite(data);
-
-
-        showToast(
-          "Website generated successfully."
-        );
-
-
-      } catch (error) {
-
-        console.error(
-          "Generation error:",
-          error
-        );
-
-
-        showError(
-          error.message ||
-          "Something went wrong. Please try again."
-        );
-
-
-      } finally {
-
-        clearInterval(timer);
-
-        setLoading(false);
-
-      }
-
-    }
-
-
-    /* =====================================
-       GENERATE BUTTON
-    ===================================== */
-
-    generateButton.addEventListener(
-      "click",
-      generateWebsite
-    );
-
-
-    /* =====================================
-       CTRL + ENTER
-    ===================================== */
-
-    promptInput.addEventListener(
-      "keydown",
-      (event) => {
-
-        if (
-          (event.ctrlKey ||
-            event.metaKey) &&
-          event.key === "Enter"
-        ) {
-
-          event.preventDefault();
-
-          generateWebsite();
-
-        }
-
-      }
-    );
-
-
-    /* =====================================
-       EXAMPLE BUTTONS
-    ===================================== */
-
-    document
-      .querySelectorAll(".example")
-      .forEach((button) => {
-
-        button.addEventListener(
-          "click",
-          () => {
-
-            promptInput.value =
-              button.dataset.prompt;
-
-            promptInput.focus();
-
-          }
-        );
-
-      });
-
-
-    /* =====================================
-       REFRESH
-    ===================================== */
-
-    refreshButton.addEventListener(
-      "click",
-      () => {
-
-        if (!currentWebsite)
-          return;
-
-
-        renderWebsite(
-          currentWebsite
-        );
-
-
-        showToast(
-          "Preview refreshed."
-        );
-
-      }
-    );
-
-
-    /* =====================================
-       OPEN
-    ===================================== */
-
-    openButton.addEventListener(
-      "click",
-      () => {
-
-        if (!currentWebsite)
-          return;
-
-
-        const html =
-          createWebsiteDocument(
-            currentWebsite
-          );
-
-
-        const blob =
-          new Blob(
-            [html],
-            {
-              type: "text/html"
-            }
-          );
-
-
-        const url =
-          URL.createObjectURL(
-            blob
-          );
-
-
-        window.open(
-          url,
-          "_blank"
-        );
-
-
-        setTimeout(() => {
-
-          URL.revokeObjectURL(
-            url
-          );
-
-        }, 10000);
-
-      }
-    );
-
-
-    /* =====================================
-       DOWNLOAD
-    ===================================== */
-
-    downloadButton.addEventListener(
-      "click",
-      () => {
-
-        if (!currentWebsite)
-          return;
-
-
-        const html =
-          createWebsiteDocument(
-            currentWebsite
-          );
-
-
-        const blob =
-          new Blob(
-            [html],
-            {
-              type: "text/html"
-            }
-          );
-
-
-        const url =
-          URL.createObjectURL(
-            blob
-          );
-
-
-        const link =
-          document.createElement(
-            "a"
-          );
-
-
-        link.href =
-          url;
-
-
-        const filename =
-          (
-            currentWebsite.title ||
-            "sambhav-website"
-          )
-            .toLowerCase()
-            .replace(
-              /[^a-z0-9]+/g,
-              "-"
-            )
-            .replace(
-              /^-|-$/g,
-              ""
-            );
-
-
-        link.download =
-          `${filename || "website"}.html`;
-
-
-        document.body.appendChild(
-          link
-        );
-
-
-        link.click();
-
-        link.remove();
-
-
-        URL.revokeObjectURL(
-          url
-        );
-
-
-        showToast(
-          "Website downloaded."
-        );
-
-      }
-    );
-
-
-    /* =====================================
-       CLEAR
-    ===================================== */
-
-    clearButton.addEventListener(
-      "click",
-      () => {
-
-        promptInput.value =
-          "";
-
-        hideError();
-
-        currentWebsite =
-          null;
-
-        preview.srcdoc =
-          "";
-
-        previewSection.classList.remove(
-          "show"
-        );
-
-        emptyPreview.style.display =
-          "flex";
-
-        promptInput.focus();
-
-        showToast(
-          "Builder cleared."
-        );
-
-      }
-    );
-
-  </script>
+  <script src="./script.js"></script>
 
 </body>
 </html>
