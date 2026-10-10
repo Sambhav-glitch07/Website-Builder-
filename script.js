@@ -525,29 +525,57 @@ function redo() {
 
 /* ------------------ Website loading ------------------ */
 
+
 function loadWebsite(html, addHistory = true) {
   const clean = normalizeHTML(html);
 
-  if (!clean || !preview) {
+  if (!clean) {
     showToast("The generated website is empty.");
-    return false;
+    return;
   }
 
   state.html = clean;
   state.previewMode = false;
+
+  if (canvasEmpty) {
+    canvasEmpty.classList.add("hidden");
+  }
+
+  if (addHistory) {
+    pushHistory(clean);
+  }
+
   state.selectedSelector = null;
+  clearInspector();
 
-  if (canvasEmpty) canvasEmpty.classList.add("hidden");
+  // Render the actual generated HTML.
+  if (!preview) {
+    showToast("Preview iframe not found.");
+    return;
+  }
 
-  if (addHistory) pushHistory(clean);
+  preview.onload = () => {
+    setTimeout(() => {
+      try {
+        const doc = preview.contentDocument;
+
+        if (!doc || !doc.documentElement) {
+          showToast("Preview failed to load.");
+          return;
+        }
+
+        renderLayers();
+      } catch (error) {
+        console.error("Preview loading error:", error);
+      }
+    }, 100);
+  };
 
   preview.srcdoc = injectEditorBridge(clean);
 
-  clearInspector();
   updateCanvasSize();
-
-  return true;
 }
+
 
 function getSelectedElement() {
   if (!state.selectedSelector || !preview) return null;
