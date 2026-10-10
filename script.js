@@ -1,19 +1,14 @@
 
 "use strict";
 
-/* =====================================================
-   SAMBHAV AI — FRONTEND ENGINE
-   Screen fixes, generation, visual editor, undo/redo
-===================================================== */
-
 const BACKEND_URL =
   "https://website-builder-backend-nu.vercel.app/api/generate";
 
-const $ = (selector, parent = document) =>
-  parent.querySelector(selector);
+const $ = (selector, root = document) =>
+  root.querySelector(selector);
 
-const $$ = (selector, parent = document) =>
-  Array.from(parent.querySelectorAll(selector));
+const $$ = (selector, root = document) =>
+  [...root.querySelectorAll(selector)];
 
 const state = {
   html: "",
@@ -25,9 +20,8 @@ const state = {
   previewMode: false,
   device: "desktop",
   controller: null,
-  timer: null,
-  particleFrame: null,
-  particleResize: null,
+  toastTimer: null,
+  generationTimer: null,
   startedAt: 0
 };
 
@@ -43,94 +37,71 @@ const inspectorContent = $("#inspectorContent");
 const layersList = $("#layersList");
 const canvasEmpty = $("#canvasEmpty");
 
-/* ------------------ Utilities ------------------ */
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 function showToast(message, duration = 3500) {
   const toast = $("#toast");
   const text = $("#toastText");
 
   if (!toast || !text) {
-    console.log("[Sambhav AI]", message);
+    console.log("[Sambhav]", message);
     return;
   }
 
   text.textContent = String(message);
   toast.classList.add("show");
 
-  clearTimeout(showToast.timer);
-
-  showToast.timer = setTimeout(() => {
+  clearTimeout(state.toastTimer);
+  state.toastTimer = setTimeout(() => {
     toast.classList.remove("show");
   }, duration);
 }
 
-/* ------------------ Screen management ------------------ */
+function showScreen(screen) {
+  const screens = [landing, generation, builder];
 
-/*
-  IMPORTANT:
-  The HTML uses the native hidden attribute.
-  Update hidden, the hidden class and display together.
-*/
+  screens.forEach(el => {
+    if (!el) return;
+    el.hidden = el !== screen;
+    el.classList.toggle("hidden", el !== screen);
+  });
 
-function setScreen(active) {
-  const screens = [
-    { element: landing, name: "landing" },
-    { element: generation, name: "generation" },
-    { element: builder, name: "builder" }
-  ];
-
-  for (const screen of screens) {
-    const el = screen.element;
-    if (!el) continue;
-
-    const visible = screen.name === active;
-
-    el.hidden = !visible;
-    el.classList.toggle("hidden", !visible);
-
-    if (visible) {
-      // Let the screen's CSS class control its layout.
-      el.style.removeProperty("display");
-    } else {
-      el.style.display = "none";
-    }
-  }
-
-  if (active !== "generation") {
-    stopParticles();
+  if (screen === landing) {
     stopTimer();
-  }
-
-  if (active === "generation") {
-    startTimer();
-    startParticles();
   }
 }
 
 function showLanding() {
-  setScreen("landing");
+  showScreen(landing);
 }
 
 function showGeneration() {
-  setScreen("generation");
+  showScreen(generation);
+  startTimer();
 }
 
 function showBuilder() {
-  setScreen("builder");
+  stopTimer();
+  showScreen(builder);
 }
 
-/* ------------------ Progress ------------------ */
+function startTimer() {
+  stopTimer();
+  state.startedAt = Date.now();
+
+  state.generationTimer = setInterval(() => {
+    const elapsed = (Date.now() - state.startedAt) / 1000;
+    const el = $("#generationTimer");
+
+    if (el) el.textContent = elapsed.toFixed(1) + "s";
+  }, 100);
+}
+
+function stopTimer() {
+  clearInterval(state.generationTimer);
+  state.generationTimer = null;
+}
 
 function updateGenerationProgress(
-  percent,
-  stage,
-  title,
-  subtitle,
-  step
+  percent, stage, title, subtitle, step
 ) {
   const progress = $("#generationProgress");
   const progressText = $("#progressText");
@@ -149,141 +120,10 @@ function updateGenerationProgress(
   });
 }
 
-/* ------------------ Generation timer ------------------ */
-
-function startTimer() {
-  stopTimer();
-  state.startedAt = performance.now();
-
-  state.timer = setInterval(() => {
-    const elapsed = (performance.now() - state.startedAt) / 1000;
-    const el = $("#generationTimer");
-
-    if (el) el.textContent = elapsed.toFixed(1) + "s";
-  }, 100);
-}
-
-function stopTimer() {
-  if (state.timer !== null) {
-    clearInterval(state.timer);
-    state.timer = null;
-  }
-}
-
-/* ------------------ Background particles ------------------ */
-
-function stopParticles() {
-  if (state.particleFrame !== null) {
-    cancelAnimationFrame(state.particleFrame);
-    state.particleFrame = null;
-  }
-
-  if (state.particleResize) {
-    window.removeEventListener("resize", state.particleResize);
-    state.particleResize = null;
-  }
-}
-
-function startParticles() {
-  stopParticles();
-
-  const canvas = $("#particleCanvas");
-
-  if (!canvas || !generation || generation.hidden) return;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  const particles = [];
-  const mobile = window.innerWidth < 700;
-  const count = mobile ? 45 : 90;
-
-  let width = 1;
-  let height = 1;
-  let dpr = 1;
-
-  function resize() {
-    const rect = generation.getBoundingClientRect();
-
-    width = Math.max(1, rect.width);
-    height = Math.max(1, rect.height);
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-    canvas.width = Math.floor(width * dpr);
-    canvas.height = Math.floor(height * dpr);
-    canvas.style.pointerEvents = "none";
-
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-
-  resize();
-
-  state.particleResize = resize;
-  window.addEventListener("resize", resize);
-
-  for (let i = 0; i < count; i++) {
-    particles.push({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.25,
-      vy: (Math.random() - 0.5) * 0.25,
-      size: Math.random() * 1.5 + 0.4,
-      alpha: Math.random() * 0.45 + 0.15
-    });
-  }
-
-  function draw() {
-    if (generation.hidden) {
-      state.particleFrame = null;
-      return;
-    }
-
-    ctx.clearRect(0, 0, width, height);
-
-    for (const p of particles) {
-      p.x += p.vx;
-      p.y += p.vy;
-
-      if (p.x < 0) p.x = width;
-      if (p.x > width) p.x = 0;
-      if (p.y < 0) p.y = height;
-      if (p.y > height) p.y = 0;
-
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(220,195,255,${p.alpha})`;
-      ctx.fill();
-    }
-
-    if (!mobile) {
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const a = particles[i];
-          const b = particles[j];
-          const distance = Math.hypot(a.x - b.x, a.y - b.y);
-
-          if (distance < 85) {
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-            ctx.strokeStyle =
-              `rgba(190,150,255,${(1 - distance / 85) * 0.12})`;
-            ctx.stroke();
-          }
-        }
-      }
-    }
-
-    state.particleFrame = requestAnimationFrame(draw);
-  }
-
-  draw();
-}
-
-/* ------------------ HTML helpers ------------------ */
-
 function normalizeHTML(value) {
-  let html = String(value || "").trim();
+  let html = String(value || "")
+    .replace(/^\uFEFF/, "")
+    .trim();
 
   html = html
     .replace(/^```(?:html)?\s*/i, "")
@@ -303,23 +143,58 @@ function normalizeHTML(value) {
 </html>`;
   }
 
-  if (!/<\/body>/i.test(html)) {
-    html = html.replace(/<\/html>\s*$/i, "</body></html>");
-    if (!/<\/body>/i.test(html)) html += "\n</body>";
+  if (!/<\/body\s*>/i.test(html)) {
+    html = html.replace(
+      /<\/html\s*>/i,
+      "</body></html>"
+    );
+
+    if (!/<\/body\s*>/i.test(html)) {
+      html += "\n</body>";
+    }
   }
 
-  if (!/<\/html>/i.test(html)) html += "\n</html>";
+  if (!/<\/html\s*>/i.test(html)) {
+    html += "\n</html>";
+  }
 
   return html;
 }
 
-function escapeHTML(value) {
+function addPreviewBase(html) {
+  // Preserve an existing base URL when the generated page
+  // already specifies one.
+  if (/<base\b[^>]*href\s*=/i.test(html)) {
+    return html;
+  }
+
+  // Relative links should resolve against the app's current
+  // URL, not the about:srcdoc document URL.
+  const base = `<base href="${escapeAttribute(document.baseURI)}">`;
+
+  if (/<head(?:\s[^>]*)?>/i.test(html)) {
+    return html.replace(
+      /<head(?:\s[^>]*)?>/i,
+      match => match + "\n" + base
+    );
+  }
+
+  if (/<html(?:\s[^>]*)?>/i.test(html)) {
+    return html.replace(
+      /<html(?:\s[^>]*)?>/i,
+      match => match + "\n<head>" + base + "</head>"
+    );
+  }
+
+  return base + html;
+}
+
+function escapeAttribute(value) {
   return String(value)
     .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function getSelector(el) {
@@ -336,14 +211,14 @@ function getSelector(el) {
     let part = current.tagName.toLowerCase();
 
     if (current.id) {
-      parts.unshift("#" + CSS.escape(current.id));
+      parts.unshift(part + "#" + CSS.escape(current.id));
       break;
     }
 
     const parent = current.parentElement;
 
     if (parent) {
-      const siblings = Array.from(parent.children).filter(
+      const siblings = [...parent.children].filter(
         item => item.tagName === current.tagName
       );
 
@@ -359,24 +234,25 @@ function getSelector(el) {
   return parts.join(" > ");
 }
 
-/* ------------------ Preview editor bridge ------------------ */
-
 function injectEditorBridge(html) {
   const bridge = `
 <script>
 (function () {
-  function getPath(el) {
+  function selectorFor(el) {
     if (!el || el.nodeType !== 1) return null;
 
     var parts = [];
     var current = el;
 
-    while (current && current.nodeType === 1 &&
-           current.tagName.toLowerCase() !== "html") {
+    while (
+      current &&
+      current.nodeType === 1 &&
+      current.tagName.toLowerCase() !== "html"
+    ) {
       var part = current.tagName.toLowerCase();
 
       if (current.id) {
-        parts.unshift("#" + CSS.escape(current.id));
+        parts.unshift(part + "#" + CSS.escape(current.id));
         break;
       }
 
@@ -384,7 +260,9 @@ function injectEditorBridge(html) {
 
       if (parent) {
         var siblings = Array.from(parent.children).filter(
-          function (x) { return x.tagName === current.tagName; }
+          function (item) {
+            return item.tagName === current.tagName;
+          }
         );
 
         if (siblings.length > 1) {
@@ -394,51 +272,50 @@ function injectEditorBridge(html) {
       }
 
       parts.unshift(part);
-      current = parent;
+      current = current.parentElement;
     }
 
     return parts.join(" > ");
   }
 
   var selected = null;
+  var previousOutline = "";
+  var previousOffset = "";
 
   function clearSelection() {
-    if (!selected) return;
-
-    selected.style.outline = selected.dataset.sambhavOldOutline || "";
-    selected.style.outlineOffset =
-      selected.dataset.sambhavOldOffset || "";
+    if (selected) {
+      selected.style.outline = previousOutline;
+      selected.style.outlineOffset = previousOffset;
+    }
 
     selected = null;
   }
 
   function selectElement(el) {
-    if (!el || !el.tagName) return;
+    if (!el || !document.body.contains(el)) return;
 
     clearSelection();
     selected = el;
+    previousOutline = el.style.outline;
+    previousOffset = el.style.outlineOffset;
 
-    selected.dataset.sambhavOldOutline = selected.style.outline || "";
-    selected.dataset.sambhavOldOffset =
-      selected.style.outlineOffset || "";
+    el.style.outline = "2px solid #9d76ff";
+    el.style.outlineOffset = "2px";
 
-    selected.style.outline = "2px solid #9d76ff";
-    selected.style.outlineOffset = "2px";
-
-    var cs = getComputedStyle(el);
+    var css = getComputedStyle(el);
 
     parent.postMessage({
       type: "SAMBHAV_SELECT",
-      selector: getPath(el),
+      selector: selectorFor(el),
       tag: el.tagName.toLowerCase(),
-      text: el.innerText || "",
-      color: cs.color,
-      background: cs.backgroundColor,
-      fontSize: parseInt(cs.fontSize, 10) || 16,
-      fontWeight: cs.fontWeight,
-      padding: parseInt(cs.paddingTop, 10) || 0,
-      radius: parseInt(cs.borderRadius, 10) || 0,
-      shadow: cs.boxShadow !== "none"
+      text: el.innerText || el.textContent || "",
+      color: css.color,
+      background: css.backgroundColor,
+      fontSize: parseInt(css.fontSize, 10) || 16,
+      fontWeight: css.fontWeight,
+      padding: parseInt(css.paddingTop, 10) || 0,
+      radius: parseInt(css.borderRadius, 10) || 0,
+      shadow: css.boxShadow !== "none"
     }, "*");
   }
 
@@ -451,30 +328,38 @@ function injectEditorBridge(html) {
   }, true);
 
   window.addEventListener("message", function (event) {
-    if (event.data && event.data.type === "SAMBHAV_CLEAR") {
+    if (
+      event.source === parent &&
+      event.data &&
+      event.data.type === "SAMBHAV_CLEAR"
+    ) {
       clearSelection();
     }
   });
 })();
 <\/script>`;
 
-  if (/<\/body>/i.test(html)) {
-    return html.replace(/<\/body>/i, bridge + "\n</body>");
+  if (/<\/body\s*>/i.test(html)) {
+    return html.replace(
+      /<\/body\s*>/i,
+      bridge + "\n</body>"
+    );
   }
 
   return html + bridge;
 }
 
-/* ------------------ History ------------------ */
-
 function pushHistory(html) {
   if (!html) return;
+
   if (state.history[state.historyIndex] === html) return;
 
   state.history = state.history.slice(0, state.historyIndex + 1);
   state.history.push(html);
 
-  if (state.history.length > 50) state.history.shift();
+  if (state.history.length > 50) {
+    state.history.shift();
+  }
 
   state.historyIndex = state.history.length - 1;
   updateHistoryButtons();
@@ -492,11 +377,306 @@ function updateHistoryButtons() {
   }
 }
 
+function clearInspector() {
+  state.selectedSelector = null;
+
+  const selectedType = $("#selectedType");
+  const mobileName = $("#mobileSelectionName");
+
+  if (selectedType) selectedType.textContent = "Nothing selected";
+  if (mobileName) mobileName.textContent = "Nothing selected";
+
+  if (inspectorContent) {
+    inspectorContent.innerHTML = `
+      <div class="inspector-empty">
+        <div class="empty-select-icon">⌁</div>
+        <strong>Select an element</strong>
+        <p>Click an element inside the website preview to edit it.</p>
+      </div>`;
+  }
+
+  inspector?.classList.remove("mobile-open");
+}
+
+function getSelectedElement() {
+  if (!state.selectedSelector || !preview) return null;
+
+  try {
+    return preview.contentDocument?.querySelector(
+      state.selectedSelector
+    ) || null;
+  } catch (error) {
+    console.error("Selection lookup failed:", error);
+    return null;
+  }
+}
+
+function saveCurrentDocument() {
+  try {
+    const doc = preview?.contentDocument;
+
+    if (!doc?.documentElement) return;
+
+    state.html = normalizeHTML(
+      "<!DOCTYPE html>\n" + doc.documentElement.outerHTML
+    );
+
+    pushHistory(state.html);
+    renderLayers();
+  } catch (error) {
+    console.error("Could not save preview document:", error);
+  }
+}
+
+function updateSelectedElement(callback) {
+  const el = getSelectedElement();
+
+  if (!el) {
+    showToast("Select an element first.");
+    return;
+  }
+
+  try {
+    callback(el);
+    saveCurrentDocument();
+  } catch (error) {
+    console.error("Element update failed:", error);
+    showToast("Could not update this element.");
+  }
+}
+
+function rgbToHex(value) {
+  if (!value) return "#ffffff";
+  if (/^#[0-9a-f]{6}$/i.test(value)) return value;
+
+  const match = value.match(
+    /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/
+  );
+
+  if (!match) return "#ffffff";
+
+  return "#" + match.slice(1, 4).map(channel =>
+    Number(channel).toString(16).padStart(2, "0")
+  ).join("");
+}
+
+function openInspector(data) {
+  const template = $("#inspectorTemplate");
+
+  if (!template || !inspectorContent) return;
+
+  state.selectedSelector = data.selector;
+  inspectorContent.innerHTML = "";
+  inspectorContent.appendChild(template.content.cloneNode(true));
+
+  const selectedType = $("#selectedType");
+  const mobileName = $("#mobileSelectionName");
+
+  if (selectedType) {
+    selectedType.textContent = "<" + data.tag + ">";
+  }
+
+  if (mobileName) {
+    mobileName.textContent = data.tag + " selected";
+  }
+
+  if (window.innerWidth <= 850) {
+    inspector?.classList.add("mobile-open");
+  }
+
+  const setValue = (id, value) => {
+    const el = $("#" + id);
+    if (el) el.value = value;
+  };
+
+  setValue("editText", data.text || "");
+  setValue("fontSizeInput", data.fontSize || 16);
+  setValue("fontWeightInput", data.fontWeight || "400");
+
+  const textColor = rgbToHex(data.color);
+  const backgroundColor = rgbToHex(data.background);
+
+  setValue("textColorInput", textColor);
+  setValue("textColorText", textColor);
+  setValue("backgroundColorInput", backgroundColor);
+  setValue("backgroundColorText", backgroundColor);
+  setValue("paddingInput", data.padding || 0);
+  setValue("radiusInput", data.radius || 0);
+
+  const shadow = $("#shadowInput");
+  if (shadow) shadow.checked = Boolean(data.shadow);
+
+  const bind = (id, eventName, callback) => {
+    const el = $("#" + id);
+    if (el) el.addEventListener(eventName, callback);
+  };
+
+  bind("editText", "change", () => {
+    updateSelectedElement(el => {
+      el.innerText = $("#editText").value;
+    });
+  });
+
+  bind("fontSizeInput", "change", () => {
+    updateSelectedElement(el => {
+      const value = Number($("#fontSizeInput").value);
+
+      if (value >= 8 && value <= 160) {
+        el.style.fontSize = value + "px";
+      }
+    });
+  });
+
+  bind("fontWeightInput", "change", () => {
+    updateSelectedElement(el => {
+      el.style.fontWeight = $("#fontWeightInput").value;
+    });
+  });
+
+  function setColor(inputId, textId, property) {
+    const input = $("#" + inputId);
+    const text = $("#" + textId);
+
+    const apply = value => {
+      const probe = document.createElement("span");
+      probe.style.color = value;
+
+      if (!probe.style.color) {
+        showToast("Enter a valid CSS color.");
+        return;
+      }
+
+      updateSelectedElement(el => {
+        el.style[property] = value;
+      });
+
+      if (input && /^#[0-9a-f]{6}$/i.test(value)) {
+        input.value = value;
+      }
+
+      if (text) text.value = value;
+    };
+
+    input?.addEventListener("change", () => apply(input.value));
+    text?.addEventListener("change", () => apply(text.value.trim()));
+  }
+
+  setColor("textColorInput", "textColorText", "color");
+  setColor("backgroundColorInput", "backgroundColorText", "backgroundColor");
+
+  bind("paddingInput", "change", () => {
+    updateSelectedElement(el => {
+      const value = Number($("#paddingInput").value);
+
+      if (value >= 0 && value <= 200) {
+        el.style.padding = value + "px";
+      }
+    });
+  });
+
+  bind("radiusInput", "change", () => {
+    updateSelectedElement(el => {
+      const value = Number($("#radiusInput").value);
+
+      if (value >= 0 && value <= 200) {
+        el.style.borderRadius = value + "px";
+      }
+    });
+  });
+
+  bind("shadowInput", "change", () => {
+    updateSelectedElement(el => {
+      el.style.boxShadow = $("#shadowInput").checked
+        ? "0 15px 40px rgba(0,0,0,.22)"
+        : "none";
+    });
+  });
+
+  bind("resetElementBtn", "click", () => {
+    updateSelectedElement(el => {
+      el.removeAttribute("style");
+    });
+  });
+}
+
+function renderLayers() {
+  if (!layersList) return;
+
+  let doc;
+
+  try {
+    doc = preview?.contentDocument;
+  } catch {
+    doc = null;
+  }
+
+  if (!doc?.body) {
+    layersList.innerHTML =
+      '<div class="layers-empty">Generate a website to see layers.</div>';
+    return;
+  }
+
+  const elements = [...doc.body.querySelectorAll("*")]
+    .filter(el => !el.closest("[data-sambhav-ignore]"))
+    .slice(0, 80);
+
+  if (!elements.length) {
+    layersList.innerHTML =
+      '<div class="layers-empty">No editable elements.</div>';
+    return;
+  }
+
+  layersList.innerHTML = "";
+
+  elements.forEach(el => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "layer-item";
+
+    const tag = el.tagName.toLowerCase();
+    const label = (el.innerText || tag)
+      .trim()
+      .split("\n")[0]
+      .slice(0, 25);
+
+    const tagLabel = document.createElement("span");
+    tagLabel.className = "layer-tag";
+    tagLabel.textContent = tag;
+
+    const nameLabel = document.createElement("span");
+    nameLabel.className = "layer-name";
+    nameLabel.textContent = label || tag;
+
+    item.append(tagLabel, nameLabel);
+
+    item.addEventListener("click", () => {
+      const css = getComputedStyle(el);
+
+      openInspector({
+        selector: getSelector(el),
+        tag,
+        text: el.innerText || el.textContent || "",
+        color: css.color,
+        background: css.backgroundColor,
+        fontSize: parseInt(css.fontSize, 10) || 16,
+        fontWeight: css.fontWeight,
+        padding: parseInt(css.paddingTop, 10) || 0,
+        radius: parseInt(css.borderRadius, 10) || 0,
+        shadow: css.boxShadow !== "none"
+      });
+    });
+
+    layersList.appendChild(item);
+  });
+}
+
 function restoreHistory() {
   state.html = state.history[state.historyIndex] || "";
   state.selectedSelector = null;
 
-  if (preview) preview.srcdoc = injectEditorBridge(state.html);
+  if (preview && state.html) {
+    renderPreview();
+  }
 
   clearInspector();
   renderLayers();
@@ -523,341 +703,47 @@ function redo() {
   restoreHistory();
 }
 
-/* ------------------ Website loading ------------------ */
+function renderPreview() {
+  if (!preview || !state.html) return;
 
+  try {
+    const html = addPreviewBase(state.html);
+
+    preview.onload = () => {
+      renderLayers();
+    };
+
+    preview.srcdoc = state.previewMode
+      ? html
+      : injectEditorBridge(html);
+  } catch (error) {
+    console.error("Preview rendering failed:", error);
+    showToast("Preview could not be rendered.");
+  }
+}
 
 function loadWebsite(html, addHistory = true) {
   const clean = normalizeHTML(html);
 
   if (!clean) {
     showToast("The generated website is empty.");
-    return;
+    return false;
   }
 
   state.html = clean;
   state.previewMode = false;
-
-  if (canvasEmpty) {
-    canvasEmpty.classList.add("hidden");
-  }
-
-  if (addHistory) {
-    pushHistory(clean);
-  }
-
   state.selectedSelector = null;
+
+  canvasEmpty?.classList.add("hidden");
+
+  if (addHistory) pushHistory(clean);
+
   clearInspector();
-
-  // Render the actual generated HTML.
-  if (!preview) {
-    showToast("Preview iframe not found.");
-    return;
-  }
-
-  preview.onload = () => {
-    setTimeout(() => {
-      try {
-        const doc = preview.contentDocument;
-
-        if (!doc || !doc.documentElement) {
-          showToast("Preview failed to load.");
-          return;
-        }
-
-        renderLayers();
-      } catch (error) {
-        console.error("Preview loading error:", error);
-      }
-    }, 100);
-  };
-
-  preview.srcdoc = injectEditorBridge(clean);
-
+  renderPreview();
   updateCanvasSize();
+
+  return true;
 }
-
-
-function getSelectedElement() {
-  if (!state.selectedSelector || !preview) return null;
-
-  try {
-    return preview.contentDocument.querySelector(
-      state.selectedSelector
-    );
-  } catch (error) {
-    console.warn("Cannot access selected element:", error);
-    return null;
-  }
-}
-
-function saveCurrentDocument() {
-  try {
-    const doc = preview?.contentDocument;
-    if (!doc?.documentElement) return;
-
-    state.html = normalizeHTML(
-      "<!DOCTYPE html>\n" + doc.documentElement.outerHTML
-    );
-
-    pushHistory(state.html);
-    renderLayers();
-  } catch (error) {
-    console.error("Could not save document:", error);
-  }
-}
-
-function updateSelectedElement(callback) {
-  const el = getSelectedElement();
-
-  if (!el) {
-    showToast("Select an element first.");
-    return;
-  }
-
-  callback(el);
-  saveCurrentDocument();
-}
-
-/* ------------------ Inspector ------------------ */
-
-function clearInspector() {
-  state.selectedSelector = null;
-
-  const selectedType = $("#selectedType");
-  const mobileName = $("#mobileSelectionName");
-
-  if (selectedType) selectedType.textContent = "Nothing selected";
-  if (mobileName) mobileName.textContent = "Nothing selected";
-
-  if (inspectorContent) {
-    inspectorContent.innerHTML = `
-      <div class="inspector-empty">
-        <div class="empty-select-icon">⌁</div>
-        <strong>Select an element</strong>
-        <p>Click something inside the website preview to edit it.</p>
-      </div>`;
-  }
-
-  inspector?.classList.remove("mobile-open");
-}
-
-function rgbToHex(value) {
-  if (!value) return "#ffffff";
-  if (/^#[0-9a-f]{6}$/i.test(value)) return value;
-
-  const match = value.match(
-    /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/
-  );
-
-  if (!match) return "#ffffff";
-
-  return "#" + match.slice(1, 4).map(value =>
-    Number(value).toString(16).padStart(2, "0")
-  ).join("");
-}
-
-function openInspector(data) {
-  const template = $("#inspectorTemplate");
-
-  if (!template || !inspectorContent || !data) return;
-
-  state.selectedSelector = data.selector;
-  inspectorContent.replaceChildren(
-    template.content.cloneNode(true)
-  );
-
-  if ($("#selectedType")) {
-    $("#selectedType").textContent = "<" + data.tag + ">";
-  }
-
-  if ($("#mobileSelectionName")) {
-    $("#mobileSelectionName").textContent = data.tag + " selected";
-  }
-
-  if (window.innerWidth <= 850) {
-    inspector?.classList.add("mobile-open");
-  }
-
-  $("#editText").value = data.text || "";
-  $("#fontSizeInput").value = data.fontSize || 16;
-  $("#fontWeightInput").value = String(data.fontWeight || "400");
-
-  const textColor = rgbToHex(data.color);
-  const backgroundColor = rgbToHex(data.background);
-
-  $("#textColorInput").value = textColor;
-  $("#textColorText").value = textColor;
-  $("#backgroundColorInput").value = backgroundColor;
-  $("#backgroundColorText").value = backgroundColor;
-
-  $("#paddingInput").value = data.padding || 0;
-  $("#radiusInput").value = data.radius || 0;
-  $("#shadowInput").checked = Boolean(data.shadow);
-
-  const bind = (id, handler, eventName = "input") => {
-    const element = $("#" + id);
-    if (element) element.addEventListener(eventName, handler);
-  };
-
-  bind("editText", () => {
-    updateSelectedElement(el => {
-      el.innerText = $("#editText").value;
-    });
-  });
-
-  bind("fontSizeInput", () => {
-    updateSelectedElement(el => {
-      const size = Number($("#fontSizeInput").value);
-      if (size >= 8 && size <= 160) {
-        el.style.fontSize = size + "px";
-      }
-    });
-  });
-
-  bind("fontWeightInput", () => {
-    updateSelectedElement(el => {
-      el.style.fontWeight = $("#fontWeightInput").value;
-    });
-  }, "change");
-
-  function setColor(inputId, textId, property) {
-    const input = $("#" + inputId);
-    const text = $("#" + textId);
-
-    const apply = value => {
-      const probe = document.createElement("span");
-      probe.style.color = value;
-
-      if (!probe.style.color) {
-        showToast("Enter a valid CSS color.");
-        return;
-      }
-
-      updateSelectedElement(el => {
-        el.style[property] = value;
-      });
-
-      if (input && /^#[0-9a-f]{6}$/i.test(value)) {
-        input.value = value;
-      }
-
-      if (text) text.value = value;
-    };
-
-    input?.addEventListener("input", () => apply(input.value));
-    text?.addEventListener("change", () => apply(text.value.trim()));
-  }
-
-  setColor("textColorInput", "textColorText", "color");
-  setColor(
-    "backgroundColorInput",
-    "backgroundColorText",
-    "backgroundColor"
-  );
-
-  bind("paddingInput", () => {
-    updateSelectedElement(el => {
-      el.style.padding =
-        Math.max(0, Number($("#paddingInput").value) || 0) + "px";
-    });
-  });
-
-  bind("radiusInput", () => {
-    updateSelectedElement(el => {
-      el.style.borderRadius =
-        Math.max(0, Number($("#radiusInput").value) || 0) + "px";
-    });
-  });
-
-  bind("shadowInput", () => {
-    updateSelectedElement(el => {
-      el.style.boxShadow = $("#shadowInput").checked
-        ? "0 15px 40px rgba(0,0,0,.22)"
-        : "none";
-    });
-  }, "change");
-
-  bind("resetElementBtn", () => {
-    updateSelectedElement(el => {
-      el.removeAttribute("style");
-    });
-
-    showToast("Element styles reset.");
-  }, "click");
-}
-
-/* ------------------ Layers ------------------ */
-
-function renderLayers() {
-  if (!layersList) return;
-
-  let doc;
-
-  try {
-    doc = preview?.contentDocument;
-  } catch {
-    doc = null;
-  }
-
-  if (!doc?.body) {
-    layersList.innerHTML =
-      '<div class="layers-empty">Generate a website to see layers.</div>';
-    return;
-  }
-
-  const elements = Array.from(
-    doc.body.querySelectorAll("*")
-  ).filter(el => !el.closest("script, style")).slice(0, 80);
-
-  if (!elements.length) {
-    layersList.innerHTML =
-      '<div class="layers-empty">No editable elements.</div>';
-    return;
-  }
-
-  layersList.replaceChildren();
-
-  elements.forEach(el => {
-    const item = document.createElement("button");
-    item.type = "button";
-    item.className = "layer-item";
-
-    const tag = el.tagName.toLowerCase();
-    const label = (el.innerText || tag)
-      .trim().split("\n")[0].slice(0, 25) || tag;
-
-    const tagLabel = document.createElement("span");
-    tagLabel.className = "layer-tag";
-    tagLabel.textContent = tag;
-
-    const nameLabel = document.createElement("span");
-    nameLabel.className = "layer-name";
-    nameLabel.textContent = label;
-
-    item.append(tagLabel, nameLabel);
-
-    item.addEventListener("click", () => {
-      const cs = getComputedStyle(el);
-
-      openInspector({
-        selector: getSelector(el),
-        tag,
-        text: el.innerText || "",
-        color: cs.color,
-        background: cs.backgroundColor,
-        fontSize: parseInt(cs.fontSize, 10) || 16,
-        fontWeight: cs.fontWeight,
-        padding: parseInt(cs.paddingTop, 10) || 0,
-        radius: parseInt(cs.borderRadius, 10) || 0,
-        shadow: cs.boxShadow !== "none"
-      });
-    });
-
-    layersList.appendChild(item);
-  });
-}
-
-/* ------------------ Add elements ------------------ */
 
 function addElement(type) {
   const doc = preview?.contentDocument;
@@ -880,26 +766,14 @@ function addElement(type) {
       "margin:20px;padding:12px 22px;border:0;border-radius:10px;background:#111;color:#fff;cursor:pointer";
   } else if (type === "card") {
     el = doc.createElement("div");
-
-    const heading = doc.createElement("h3");
-    heading.textContent = "New Card";
-
-    const paragraph = doc.createElement("p");
-    paragraph.textContent = "Edit this card from the inspector.";
-
-    el.append(heading, paragraph);
+    el.innerHTML =
+      "<h3>New Card</h3><p>Edit this card from the inspector.</p>";
     el.style.cssText =
       "margin:20px;padding:24px;border-radius:16px;background:#f3f3f3;color:#111";
   } else if (type === "section") {
     el = doc.createElement("section");
-
-    const heading = doc.createElement("h2");
-    heading.textContent = "New Section";
-
-    const paragraph = doc.createElement("p");
-    paragraph.textContent = "Add your content here.";
-
-    el.append(heading, paragraph);
+    el.innerHTML =
+      "<h2>New Section</h2><p>Add your content here.</p>";
     el.style.cssText =
       "min-height:250px;padding:60px 30px;background:#111;color:#fff";
   }
@@ -909,19 +783,19 @@ function addElement(type) {
   doc.body.appendChild(el);
   saveCurrentDocument();
 
-  const cs = getComputedStyle(el);
+  const css = getComputedStyle(el);
 
   openInspector({
     selector: getSelector(el),
     tag: el.tagName.toLowerCase(),
     text: el.innerText || "",
-    color: cs.color,
-    background: cs.backgroundColor,
-    fontSize: parseInt(cs.fontSize, 10) || 16,
-    fontWeight: cs.fontWeight,
-    padding: parseInt(cs.paddingTop, 10) || 0,
-    radius: parseInt(cs.borderRadius, 10) || 0,
-    shadow: cs.boxShadow !== "none"
+    color: css.color,
+    background: css.backgroundColor,
+    fontSize: parseInt(css.fontSize, 10) || 16,
+    fontWeight: css.fontWeight,
+    padding: parseInt(css.paddingTop, 10) || 0,
+    radius: parseInt(css.borderRadius, 10) || 0,
+    shadow: css.boxShadow !== "none"
   });
 
   showToast(type + " added.");
@@ -930,7 +804,7 @@ function addElement(type) {
 function duplicateSelected() {
   const el = getSelectedElement();
 
-  if (!el || !el.parentNode) {
+  if (!el?.parentNode) {
     showToast("Select an element first.");
     return;
   }
@@ -950,20 +824,17 @@ function deleteSelected() {
     return;
   }
 
-  if (["html", "body"].includes(el.tagName.toLowerCase())) {
+  if (["html", "body", "head"].includes(el.tagName.toLowerCase())) {
     showToast("That element cannot be deleted.");
     return;
   }
 
   el.remove();
   state.selectedSelector = null;
-
   saveCurrentDocument();
   clearInspector();
   showToast("Element deleted.");
 }
-
-/* ------------------ Generate website ------------------ */
 
 async function generateWebsite() {
   if (state.generating) return;
@@ -971,7 +842,7 @@ async function generateWebsite() {
   const prompt = promptInput?.value.trim() || "";
 
   if (!prompt) {
-    showToast("Describe your website first.");
+    showToast("Describe the website first.");
     promptInput?.focus();
     return;
   }
@@ -982,60 +853,33 @@ async function generateWebsite() {
   }
 
   state.generating = true;
-  state.controller = new AbortController();
 
-  let timedOut = false;
-
-  const timeoutId = setTimeout(() => {
-    timedOut = true;
-    state.controller?.abort();
-  }, 45000);
+  const controller = new AbortController();
+  state.controller = controller;
 
   if (generateBtn) {
     generateBtn.disabled = true;
     generateBtn.style.pointerEvents = "none";
   }
 
+  showGeneration();
+
+  updateGenerationProgress(
+    10, "INITIALIZING", "Understanding your idea",
+    "Preparing the design system...", 0
+  );
+
   try {
-    showGeneration();
-
-    updateGenerationProgress(
-      10,
-      "PHASE 01 / DISCOVERY",
-      "Understanding your idea",
-      "Preparing your design system...",
-      0
-    );
-
-    await sleep(250);
-
-    updateGenerationProgress(
-      30,
-      "PHASE 02 / DESIGN",
-      "Designing your experience",
-      "Choosing a layout and visual direction...",
-      1
-    );
-
-    const responsePromise = fetch(BACKEND_URL, {
+    const response = await fetch(BACKEND_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json"
       },
       body: JSON.stringify({ prompt }),
-      signal: state.controller.signal
+      signal: controller.signal
     });
 
-    updateGenerationProgress(
-      45,
-      "PHASE 03 / BUILD",
-      "Building the interface",
-      "Generating responsive HTML and CSS...",
-      2
-    );
-
-    const response = await responsePromise;
     const raw = await response.text();
 
     let data;
@@ -1044,7 +888,7 @@ async function generateWebsite() {
       data = JSON.parse(raw);
     } catch {
       throw new Error(
-        "The API returned invalid JSON (HTTP " +
+        "Server returned an invalid response (HTTP " +
         response.status + ")."
       );
     }
@@ -1053,84 +897,71 @@ async function generateWebsite() {
       throw new Error(
         data?.error ||
         data?.message ||
-        "Server returned HTTP " + response.status
+        "Request failed (HTTP " + response.status + ")."
       );
     }
 
-    if (data?.success !== true || typeof data.html !== "string") {
+    // Support the expected response and common alternate wrappers.
+    const html = typeof data === "string"
+      ? data
+      : data?.html ||
+        data?.website ||
+        data?.result?.html ||
+        data?.data?.html ||
+        "";
+
+    if (typeof html !== "string" || !html.trim()) {
       throw new Error(
-        data?.error || "The API did not return website HTML."
+        data?.error ||
+        data?.message ||
+        "The server returned no website HTML."
       );
-    }
-
-    const html = normalizeHTML(data.html);
-
-    if (!html) {
-      throw new Error("The generated HTML was empty.");
     }
 
     updateGenerationProgress(
-      85,
-      "PHASE 04 / POLISH",
-      "Preparing your website",
-      "Opening the visual editor...",
-      3
+      70, "BUILDING", "Building your interface",
+      "Preparing the generated website...", 2
     );
 
-    await sleep(200);
+    const clean = normalizeHTML(html);
 
-    state.originalHTML = html;
-    state.html = html;
+    if (!clean) {
+      throw new Error("Generated website HTML is empty.");
+    }
+
+    state.originalHTML = clean;
     state.history = [];
     state.historyIndex = -1;
-    state.selectedSelector = null;
-    state.previewMode = false;
 
-    if (canvasEmpty) canvasEmpty.classList.add("hidden");
-
-    // Switch screens before loading the iframe.
-    showBuilder();
-
-    if (!loadWebsite(html, true)) {
-      throw new Error("Could not load the website preview.");
+    if (!loadWebsite(clean, true)) {
+      throw new Error("Could not load the generated website.");
     }
 
     updateGenerationProgress(
-      100,
-      "COMPLETE",
-      "Your website is ready",
-      "Your creative universe is open.",
-      3
+      100, "COMPLETE", "Your website is ready",
+      "Opening the visual editor...", 3
     );
 
+    showBuilder();
     showToast("Website generated successfully.");
-
   } catch (error) {
-    console.error("Sambhav AI generation error:", error);
+    console.error("[Sambhav generation]", error);
 
-    showLanding();
-
-    if (timedOut) {
-      showToast("Request timed out. Check your backend.", 6000);
-    } else if (error.name === "AbortError") {
+    if (error.name === "AbortError") {
+      showLanding();
       showToast("Generation cancelled.");
-    } else if (
-      error instanceof TypeError ||
-      /fetch|network|load failed/i.test(error.message || "")
-    ) {
-      showToast(
-        "Network error. Check your connection and backend CORS settings.",
-        6500
-      );
     } else {
-      showToast(error.message || "Generation failed.", 6500);
+      showLanding();
+
+      showToast(
+        error instanceof TypeError
+          ? "Network or CORS error. Check the connection and backend."
+          : error.message || "Generation failed.",
+        6000
+      );
     }
-
   } finally {
-    clearTimeout(timeoutId);
-    stopParticles();
     stopTimer();
-
     state.generating = false;
     state.controller = null;
 
@@ -1141,42 +972,30 @@ async function generateWebsite() {
   }
 }
 
-/* ------------------ Preview mode ------------------ */
-
 function enterPreview() {
-  if (!state.html || !preview) {
+  if (!state.html) {
     showToast("Generate a website first.");
     return;
   }
 
   state.previewMode = true;
-  preview.srcdoc = state.html;
-
-  if (canvasEmpty) canvasEmpty.classList.add("hidden");
-
+  renderPreview();
   $("#previewBtn")?.classList.add("active");
   showToast("Preview mode enabled.");
 }
 
 function exitPreview() {
-  if (!state.html || !preview) return;
+  if (!state.html) return;
 
   state.previewMode = false;
-  preview.srcdoc = injectEditorBridge(state.html);
-
+  renderPreview();
   $("#previewBtn")?.classList.remove("active");
   showToast("Back to editor.");
 }
 
 function togglePreview() {
-  if (state.previewMode) {
-    exitPreview();
-  } else {
-    enterPreview();
-  }
+  state.previewMode ? exitPreview() : enterPreview();
 }
-
-/* ------------------ Devices ------------------ */
 
 function setDevice(device) {
   if (!["desktop", "tablet", "mobile"].includes(device)) return;
@@ -1207,19 +1026,13 @@ function updateCanvasSize() {
   setDevice(state.device);
 }
 
-/* ------------------ Refresh / export / reset ------------------ */
-
 function refreshWebsite() {
-  if (!state.html || !preview) {
+  if (!state.html) {
     showToast("Nothing to refresh.");
     return;
   }
 
-  preview.srcdoc = state.previewMode
-    ? state.html
-    : injectEditorBridge(state.html);
-
-  clearInspector();
+  renderPreview();
   showToast("Preview refreshed.");
 }
 
@@ -1229,38 +1042,44 @@ function exportWebsite() {
     return;
   }
 
-  const blob = new Blob(
-    [normalizeHTML(state.html)],
-    { type: "text/html;charset=utf-8" }
-  );
+  try {
+    const blob = new Blob(
+      [normalizeHTML(state.html)],
+      { type: "text/html;charset=utf-8" }
+    );
 
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
 
-  link.href = url;
-  link.download = "sambhav-website.html";
+    link.href = url;
+    link.download = "sambhav-website.html";
 
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
 
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-  showToast("Website exported.");
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    showToast("Website exported.");
+  } catch (error) {
+    console.error("Export failed:", error);
+    showToast("Could not export the website.");
+  }
 }
 
 function resetWebsite() {
-  if (!state.originalHTML || !preview) {
+  if (!state.originalHTML) {
     showToast("Nothing to reset.");
     return;
   }
 
-  state.html = normalizeHTML(state.originalHTML);
+  state.html = state.originalHTML;
   pushHistory(state.html);
+  state.previewMode = false;
 
-  preview.srcdoc = injectEditorBridge(state.html);
-
+  renderPreview();
   clearInspector();
   renderLayers();
+
   showToast("Website reset.");
 }
 
@@ -1278,9 +1097,9 @@ function renameProject() {
   }
 }
 
-/* ------------------ Iframe messages ------------------ */
-
 window.addEventListener("message", event => {
+  if (event.source !== preview?.contentWindow) return;
+
   const data = event.data;
 
   if (!data || data.type !== "SAMBHAV_SELECT") return;
@@ -1289,17 +1108,11 @@ window.addEventListener("message", event => {
   openInspector(data);
 });
 
-preview?.addEventListener("load", () => {
-  setTimeout(renderLayers, 100);
-});
-
-/* ------------------ Event bindings ------------------ */
-
 generateBtn?.addEventListener("click", generateWebsite);
 
 $("#emptyGenerateBtn")?.addEventListener("click", () => {
-  showLanding();
   promptInput?.focus();
+  showLanding();
 });
 
 $("#cancelGenerationBtn")?.addEventListener("click", () => {
@@ -1311,10 +1124,7 @@ $("#cancelGenerationBtn")?.addEventListener("click", () => {
 });
 
 promptInput?.addEventListener("keydown", event => {
-  if (
-    (event.ctrlKey || event.metaKey) &&
-    event.key === "Enter"
-  ) {
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
     event.preventDefault();
     generateWebsite();
   }
@@ -1358,8 +1168,7 @@ $("#closeInspectorBtn")?.addEventListener("click", () => {
   inspector?.classList.remove("mobile-open");
 
   preview?.contentWindow?.postMessage(
-    { type: "SAMBHAV_CLEAR" },
-    "*"
+    { type: "SAMBHAV_CLEAR" }, "*"
   );
 });
 
@@ -1373,9 +1182,7 @@ $("#mobileInspectorOpen")?.addEventListener("click", () => {
 });
 
 $$("[data-add]").forEach(button => {
-  button.addEventListener("click", () => {
-    addElement(button.dataset.add);
-  });
+  button.addEventListener("click", () => addElement(button.dataset.add));
 });
 
 $$(".device-button").forEach(button => {
@@ -1393,47 +1200,71 @@ $$(".sidebar-tab").forEach(tab => {
     });
 
     $("#elementsPanel")?.classList.toggle(
-      "hidden",
-      panel !== "elements"
+      "hidden", panel !== "elements"
     );
 
     $("#layersPanel")?.classList.toggle(
-      "hidden",
-      panel !== "layers"
+      "hidden", panel !== "layers"
     );
   });
 });
 
+preview?.addEventListener("load", () => {
+  setTimeout(renderLayers, 100);
+});
+
 document.addEventListener("keydown", event => {
+  const target = event.target;
+  const typing = target instanceof HTMLElement &&
+    (target.isContentEditable ||
+     ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+
   if (event.key === "Escape") {
     inspector?.classList.remove("mobile-open");
 
-    if (state.previewMode) exitPreview();
+    if (state.generating) {
+      state.controller?.abort();
+    } else if (state.previewMode) {
+      exitPreview();
+    }
   }
 
   if (
+    !typing &&
     (event.ctrlKey || event.metaKey) &&
-    event.key.toLowerCase() === "d" &&
-    !["INPUT", "TEXTAREA", "SELECT"].includes(
-      document.activeElement?.tagName
-    )
+    event.key.toLowerCase() === "d"
   ) {
     event.preventDefault();
     duplicateSelected();
   }
+
+  if (
+    !typing &&
+    (event.ctrlKey || event.metaKey) &&
+    event.key.toLowerCase() === "z"
+  ) {
+    event.preventDefault();
+    event.shiftKey ? redo() : undo();
+  }
 });
 
-/* ------------------ Initialize ------------------ */
+window.addEventListener("error", event => {
+  console.error(
+    "[Sambhav error]",
+    event.message,
+    event.filename,
+    event.lineno
+  );
+});
+
+window.addEventListener("unhandledrejection", event => {
+  console.error("[Sambhav promise error]", event.reason);
+});
 
 function initialize() {
-  // Explicitly establish a known initial state.
   showLanding();
   updateHistoryButtons();
   setDevice("desktop");
-
-  if (canvasEmpty) canvasEmpty.classList.remove("hidden");
-
-  if (promptInput) promptInput.focus();
 }
 
 initialize();
