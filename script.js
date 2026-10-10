@@ -1,1270 +1,818 @@
 
 "use strict";
 
-const BACKEND_URL =
-  "https://website-builder-backend-nu.vercel.app/api/generate";
+document.addEventListener("DOMContentLoaded", () => {
+  const $ = (selector) => document.querySelector(selector);
+  const $$ = (selector) => [...document.querySelectorAll(selector)];
 
-const $ = (selector, root = document) =>
-  root.querySelector(selector);
-
-const $$ = (selector, root = document) =>
-  [...root.querySelectorAll(selector)];
-
-const state = {
-  html: "",
-  originalHTML: "",
-  history: [],
-  historyIndex: -1,
-  selectedSelector: null,
-  generating: false,
-  previewMode: false,
-  device: "desktop",
-  controller: null,
-  toastTimer: null,
-  generationTimer: null,
-  startedAt: 0
-};
-
-const landing = $("#landingScreen");
-const generation = $("#generationScreen");
-const builder = $("#builderScreen");
-const promptInput = $("#promptInput");
-const generateBtn = $("#generateBtn");
-const preview = $("#websitePreview");
-const deviceFrame = $("#deviceFrame");
-const inspector = $("#inspector");
-const inspectorContent = $("#inspectorContent");
-const layersList = $("#layersList");
-const canvasEmpty = $("#canvasEmpty");
-
-function showToast(message, duration = 3500) {
+  const landing = $("#landingScreen");
+  const generation = $("#generationScreen");
+  const builder = $("#builderScreen");
+  const promptInput = $("#promptInput");
+  const generateBtn = $("#generateBtn");
+  const emptyGenerateBtn = $("#emptyGenerateBtn");
+  const cancelBtn = $("#cancelGenerationBtn");
+  const preview = $("#websitePreview");
+  const canvasEmpty = $("#canvasEmpty");
+  const deviceFrame = $("#deviceFrame");
+  const inspector = $("#inspectorContent");
+  const selectedType = $("#selectedType");
+  const layersList = $("#layersList");
   const toast = $("#toast");
-  const text = $("#toastText");
+  const toastText = $("#toastText");
 
-  if (!toast || !text) {
-    console.log("[Sambhav]", message);
+  if (!preview || !builder || !landing) {
+    console.error("Sambhav AI: Required HTML elements are missing.");
     return;
   }
 
-  text.textContent = String(message);
-  toast.classList.add("show");
+  let generatedHTML = "";
+  let selectedElementId = null;
+  let elementCounter = 0;
+  let history = [];
+  let historyIndex = -1;
+  let generationTimer = null;
+  let generationStarted = 0;
+  let toastTimer = null;
+  let currentDevice = "desktop";
+  let projectName = "Untitled Website";
 
-  clearTimeout(state.toastTimer);
-  state.toastTimer = setTimeout(() => {
-    toast.classList.remove("show");
-  }, duration);
-}
+  const escapeHTML = (value) =>
+    String(value).replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[char]);
 
-function showScreen(screen) {
-  const screens = [landing, generation, builder];
+  function notify(message) {
+    if (!toast || !toastText) {
+      console.log(message);
+      return;
+    }
 
-  screens.forEach(el => {
-    if (!el) return;
-    el.hidden = el !== screen;
-    el.classList.toggle("hidden", el !== screen);
-  });
+    toastText.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
 
-  if (screen === landing) {
-    stopTimer();
+    toastTimer = setTimeout(() => {
+      toast.classList.remove("show");
+    }, 2600);
   }
-}
 
-function showLanding() {
-  showScreen(landing);
-}
+  function showScreen(screen) {
+    [landing, generation, builder].forEach((item) => {
+      if (item) item.hidden = item !== screen;
+    });
+  }
 
-function showGeneration() {
-  showScreen(generation);
-  startTimer();
-}
+  function buildWebsite(prompt) {
+    const description = prompt.trim();
+    const title = description
+      .replace(/^(create|make|build|design)\s+/i, "")
+      .replace(/\b(a|an|the)\b/gi, "")
+      .trim()
+      .split(/[.!?\n]/)[0]
+      .slice(0, 65);
 
-function showBuilder() {
-  stopTimer();
-  showScreen(builder);
-}
+    const heading = title
+      ? title.charAt(0).toUpperCase() + title.slice(1)
+      : "Your next big idea starts here.";
 
-function startTimer() {
-  stopTimer();
-  state.startedAt = Date.now();
+    const safeHeading = escapeHTML(heading);
+    const safePrompt = escapeHTML(
+      description || "A beautiful website built around your ideas."
+    );
 
-  state.generationTimer = setInterval(() => {
-    const elapsed = (Date.now() - state.startedAt) / 1000;
-    const el = $("#generationTimer");
-
-    if (el) el.textContent = elapsed.toFixed(1) + "s";
-  }, 100);
-}
-
-function stopTimer() {
-  clearInterval(state.generationTimer);
-  state.generationTimer = null;
-}
-
-function updateGenerationProgress(
-  percent, stage, title, subtitle, step
-) {
-  const progress = $("#generationProgress");
-  const progressText = $("#progressText");
-  const stageEl = $("#generationStage");
-  const titleEl = $("#generationTitle");
-  const subtitleEl = $("#generationSubtitle");
-
-  if (progress) progress.style.width = percent + "%";
-  if (progressText) progressText.textContent = percent + "%";
-  if (stageEl) stageEl.textContent = stage;
-  if (titleEl) titleEl.textContent = title;
-  if (subtitleEl) subtitleEl.textContent = subtitle;
-
-  $$(".generation-step").forEach((el, index) => {
-    el.classList.toggle("active", index <= step);
-  });
-}
-
-function normalizeHTML(value) {
-  let html = String(value || "")
-    .replace(/^\uFEFF/, "")
-    .trim();
-
-  html = html
-    .replace(/^```(?:html)?\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
-
-  if (!html) return "";
-
-  if (!/<html[\s>]/i.test(html)) {
-    html = `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${safeHeading}</title>
+<style>
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:#0b0915;color:#f8f7ff;line-height:1.6}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer}
+.nav{height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 7%;border-bottom:1px solid #ffffff16}
+.logo{font-size:22px;font-weight:800;letter-spacing:-1px}
+.logo span{color:#b39aff}
+.nav a:last-child,.cta{background:linear-gradient(120deg,#a78bfa,#e879f9);color:#160d29;border-radius:12px;padding:11px 18px;font-weight:700}
+.hero{max-width:1050px;margin:auto;padding:110px 24px 90px;text-align:center}
+.tag{display:inline-block;padding:7px 14px;border:1px solid #a78bfa55;border-radius:30px;color:#c4b5fd;font-size:12px;letter-spacing:2px;text-transform:uppercase}
+h1{font-size:clamp(38px,7vw,76px);line-height:1.08;letter-spacing:-3px;margin:28px auto;max-width:900px}
+.gradient{background:linear-gradient(90deg,#c4b5fd,#f0abfc,#93c5fd);background-clip:text;-webkit-background-clip:text;color:transparent}
+.description{max-width:650px;margin:0 auto 30px;color:#b8b3c9;font-size:17px}
+.cta{display:inline-block;border:0;padding:14px 23px}
+.features{padding:65px 7%;background:#ffffff05}
+.section-title{text-align:center;font-size:32px;margin:0 0 35px}
+.grid{max-width:1100px;margin:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.card{padding:25px;border:1px solid #ffffff18;border-radius:18px;background:linear-gradient(145deg,#ffffff0c,#ffffff03)}
+.card h3{font-size:19px;margin:12px 0}
+.card p{color:#b8b3c9;font-size:14px}
+.icon{font-size:27px;color:#c4b5fd}
+.about{max-width:800px;margin:auto;padding:80px 24px;text-align:center}
+.about p{color:#b8b3c9}
+.footer{text-align:center;padding:30px;border-top:1px solid #ffffff15;color:#a7a1b9;font-size:13px}
+@media(max-width:700px){
+.nav{padding:0 5%;height:66px}
+.hero{padding:75px 20px 65px}
+h1{letter-spacing:-1.5px}
+.grid{grid-template-columns:1fr}
+.features{padding:50px 20px}
+.section-title{font-size:27px}
+}
+</style>
 </head>
-<body>${html}</body>
+<body>
+<header class="nav">
+  <a href="#" class="logo" data-editable="Brand">Sambhav<span>Studio</span></a>
+  <a href="#contact" data-editable="Navigation button">Let's talk ↗</a>
+</header>
+<main>
+  <section class="hero">
+    <span class="tag" data-editable="Eyebrow">YOUR IDEA, REIMAGINED</span>
+    <h1 data-editable="Main heading">${safeHeading.replace(/&amp;/g, "&amp;")}</h1>
+    <p class="description" data-editable="Description">${safePrompt}</p>
+    <a href="#features" class="cta" data-editable="Main button">Explore the experience ↗</a>
+  </section>
+  <section class="features" id="features">
+    <h2 class="section-title" data-editable="Features heading">Made for what's next.</h2>
+    <div class="grid">
+      <article class="card" data-editable="Feature card one">
+        <span class="icon">✦</span>
+        <h3>Thoughtful design</h3>
+        <p>A polished visual experience with carefully considered details.</p>
+      </article>
+      <article class="card" data-editable="Feature card two">
+        <span class="icon">◈</span>
+        <h3>Built to adapt</h3>
+        <p>A responsive layout designed for phones, tablets, and desktops.</p>
+      </article>
+      <article class="card" data-editable="Feature card three">
+        <span class="icon">↗</span>
+        <h3>Ready for your ideas</h3>
+        <p>A flexible starting point you can customize to make it yours.</p>
+      </article>
+    </div>
+  </section>
+  <section class="about" id="contact">
+    <h2 data-editable="Closing heading">Let's make something memorable.</h2>
+    <p data-editable="Closing text">Your vision is the starting point. The possibilities are yours to explore.</p>
+    <a href="mailto:hello@example.com" class="cta" data-editable="Contact button">Get in touch ↗</a>
+  </section>
+</main>
+<footer class="footer" data-editable="Footer">Designed with imagination · ${safeHeading}</footer>
+<script>
+document.querySelectorAll('a[href^="#"]').forEach(function(link){
+  link.addEventListener('click',function(event){
+    var target=document.querySelector(link.getAttribute('href'));
+    if(target){event.preventDefault();target.scrollIntoView({behavior:'smooth'});}
+  });
+});
+<\/script>
+</body>
 </html>`;
   }
 
-  if (!/<\/body\s*>/i.test(html)) {
-    html = html.replace(
-      /<\/html\s*>/i,
-      "</body></html>"
-    );
-
-    if (!/<\/body\s*>/i.test(html)) {
-      html += "\n</body>";
+  function getPreviewDocument() {
+    try {
+      return preview.contentDocument ||
+        preview.contentWindow.document;
+    } catch (error) {
+      console.error("Cannot access preview document:", error);
+      return null;
     }
   }
 
-  if (!/<\/html\s*>/i.test(html)) {
-    html += "\n</html>";
+  function saveHistory() {
+    const doc = getPreviewDocument();
+    if (!doc || !doc.documentElement) return;
+
+    const snapshot = doc.documentElement.outerHTML;
+
+    if (history[historyIndex] === snapshot) return;
+
+    history = history.slice(0, historyIndex + 1);
+    history.push(snapshot);
+
+    if (history.length > 50) history.shift();
+
+    historyIndex = history.length - 1;
+    updateHistoryButtons();
   }
 
-  return html;
-}
+  function updateHistoryButtons() {
+    const undo = $("#undoBtn");
+    const redo = $("#redoBtn");
 
-function addPreviewBase(html) {
-  // Preserve an existing base URL when the generated page
-  // already specifies one.
-  if (/<base\b[^>]*href\s*=/i.test(html)) {
-    return html;
+    if (undo) undo.disabled = historyIndex <= 0;
+    if (redo) redo.disabled =
+      historyIndex < 0 || historyIndex >= history.length - 1;
   }
 
-  // Relative links should resolve against the app's current
-  // URL, not the about:srcdoc document URL.
-  const base = `<base href="${escapeAttribute(document.baseURI)}">`;
-
-  if (/<head(?:\s[^>]*)?>/i.test(html)) {
-    return html.replace(
-      /<head(?:\s[^>]*)?>/i,
-      match => match + "\n" + base
-    );
-  }
-
-  if (/<html(?:\s[^>]*)?>/i.test(html)) {
-    return html.replace(
-      /<html(?:\s[^>]*)?>/i,
-      match => match + "\n<head>" + base + "</head>"
-    );
-  }
-
-  return base + html;
-}
-
-function escapeAttribute(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function getSelector(el) {
-  if (!el || el.nodeType !== 1) return null;
-
-  const parts = [];
-  let current = el;
-
-  while (
-    current &&
-    current.nodeType === 1 &&
-    current.tagName.toLowerCase() !== "html"
-  ) {
-    let part = current.tagName.toLowerCase();
-
-    if (current.id) {
-      parts.unshift(part + "#" + CSS.escape(current.id));
-      break;
-    }
-
-    const parent = current.parentElement;
-
-    if (parent) {
-      const siblings = [...parent.children].filter(
-        item => item.tagName === current.tagName
-      );
-
-      if (siblings.length > 1) {
-        part += `:nth-of-type(${siblings.indexOf(current) + 1})`;
-      }
-    }
-
-    parts.unshift(part);
-    current = current.parentElement;
-  }
-
-  return parts.join(" > ");
-}
-
-function injectEditorBridge(html) {
-  const bridge = `
-<script>
-(function () {
-  function selectorFor(el) {
-    if (!el || el.nodeType !== 1) return null;
-
-    var parts = [];
-    var current = el;
-
-    while (
-      current &&
-      current.nodeType === 1 &&
-      current.tagName.toLowerCase() !== "html"
-    ) {
-      var part = current.tagName.toLowerCase();
-
-      if (current.id) {
-        parts.unshift(part + "#" + CSS.escape(current.id));
-        break;
-      }
-
-      var parent = current.parentElement;
-
-      if (parent) {
-        var siblings = Array.from(parent.children).filter(
-          function (item) {
-            return item.tagName === current.tagName;
-          }
-        );
-
-        if (siblings.length > 1) {
-          part += ":nth-of-type(" +
-            (siblings.indexOf(current) + 1) + ")";
-        }
-      }
-
-      parts.unshift(part);
-      current = current.parentElement;
-    }
-
-    return parts.join(" > ");
-  }
-
-  var selected = null;
-  var previousOutline = "";
-  var previousOffset = "";
-
-  function clearSelection() {
-    if (selected) {
-      selected.style.outline = previousOutline;
-      selected.style.outlineOffset = previousOffset;
-    }
-
-    selected = null;
-  }
-
-  function selectElement(el) {
-    if (!el || !document.body.contains(el)) return;
-
-    clearSelection();
-    selected = el;
-    previousOutline = el.style.outline;
-    previousOffset = el.style.outlineOffset;
-
-    el.style.outline = "2px solid #9d76ff";
-    el.style.outlineOffset = "2px";
-
-    var css = getComputedStyle(el);
-
-    parent.postMessage({
-      type: "SAMBHAV_SELECT",
-      selector: selectorFor(el),
-      tag: el.tagName.toLowerCase(),
-      text: el.innerText || el.textContent || "",
-      color: css.color,
-      background: css.backgroundColor,
-      fontSize: parseInt(css.fontSize, 10) || 16,
-      fontWeight: css.fontWeight,
-      padding: parseInt(css.paddingTop, 10) || 0,
-      radius: parseInt(css.borderRadius, 10) || 0,
-      shadow: css.boxShadow !== "none"
-    }, "*");
-  }
-
-  document.addEventListener("click", function (event) {
-    if (event.target.closest("[data-sambhav-ignore]")) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    selectElement(event.target);
-  }, true);
-
-  window.addEventListener("message", function (event) {
-    if (
-      event.source === parent &&
-      event.data &&
-      event.data.type === "SAMBHAV_CLEAR"
-    ) {
-      clearSelection();
-    }
-  });
-})();
-<\/script>`;
-
-  if (/<\/body\s*>/i.test(html)) {
-    return html.replace(
-      /<\/body\s*>/i,
-      bridge + "\n</body>"
-    );
-  }
-
-  return html + bridge;
-}
-
-function pushHistory(html) {
-  if (!html) return;
-
-  if (state.history[state.historyIndex] === html) return;
-
-  state.history = state.history.slice(0, state.historyIndex + 1);
-  state.history.push(html);
-
-  if (state.history.length > 50) {
-    state.history.shift();
-  }
-
-  state.historyIndex = state.history.length - 1;
-  updateHistoryButtons();
-}
-
-function updateHistoryButtons() {
-  const undoBtn = $("#undoBtn");
-  const redoBtn = $("#redoBtn");
-
-  if (undoBtn) undoBtn.disabled = state.historyIndex <= 0;
-
-  if (redoBtn) {
-    redoBtn.disabled =
-      state.historyIndex >= state.history.length - 1;
-  }
-}
-
-function clearInspector() {
-  state.selectedSelector = null;
-
-  const selectedType = $("#selectedType");
-  const mobileName = $("#mobileSelectionName");
-
-  if (selectedType) selectedType.textContent = "Nothing selected";
-  if (mobileName) mobileName.textContent = "Nothing selected";
-
-  if (inspectorContent) {
-    inspectorContent.innerHTML = `
-      <div class="inspector-empty">
-        <div class="empty-select-icon">⌁</div>
-        <strong>Select an element</strong>
-        <p>Click an element inside the website preview to edit it.</p>
-      </div>`;
-  }
-
-  inspector?.classList.remove("mobile-open");
-}
-
-function getSelectedElement() {
-  if (!state.selectedSelector || !preview) return null;
-
-  try {
-    return preview.contentDocument?.querySelector(
-      state.selectedSelector
-    ) || null;
-  } catch (error) {
-    console.error("Selection lookup failed:", error);
-    return null;
-  }
-}
-
-function saveCurrentDocument() {
-  try {
-    const doc = preview?.contentDocument;
-
-    if (!doc?.documentElement) return;
-
-    state.html = normalizeHTML(
-      "<!DOCTYPE html>\n" + doc.documentElement.outerHTML
-    );
-
-    pushHistory(state.html);
-    renderLayers();
-  } catch (error) {
-    console.error("Could not save preview document:", error);
-  }
-}
-
-function updateSelectedElement(callback) {
-  const el = getSelectedElement();
-
-  if (!el) {
-    showToast("Select an element first.");
-    return;
-  }
-
-  try {
-    callback(el);
-    saveCurrentDocument();
-  } catch (error) {
-    console.error("Element update failed:", error);
-    showToast("Could not update this element.");
-  }
-}
-
-function rgbToHex(value) {
-  if (!value) return "#ffffff";
-  if (/^#[0-9a-f]{6}$/i.test(value)) return value;
-
-  const match = value.match(
-    /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/
-  );
-
-  if (!match) return "#ffffff";
-
-  return "#" + match.slice(1, 4).map(channel =>
-    Number(channel).toString(16).padStart(2, "0")
-  ).join("");
-}
-
-function openInspector(data) {
-  const template = $("#inspectorTemplate");
-
-  if (!template || !inspectorContent) return;
-
-  state.selectedSelector = data.selector;
-  inspectorContent.innerHTML = "";
-  inspectorContent.appendChild(template.content.cloneNode(true));
-
-  const selectedType = $("#selectedType");
-  const mobileName = $("#mobileSelectionName");
-
-  if (selectedType) {
-    selectedType.textContent = "<" + data.tag + ">";
-  }
-
-  if (mobileName) {
-    mobileName.textContent = data.tag + " selected";
-  }
-
-  if (window.innerWidth <= 850) {
-    inspector?.classList.add("mobile-open");
-  }
-
-  const setValue = (id, value) => {
-    const el = $("#" + id);
-    if (el) el.value = value;
-  };
-
-  setValue("editText", data.text || "");
-  setValue("fontSizeInput", data.fontSize || 16);
-  setValue("fontWeightInput", data.fontWeight || "400");
-
-  const textColor = rgbToHex(data.color);
-  const backgroundColor = rgbToHex(data.background);
-
-  setValue("textColorInput", textColor);
-  setValue("textColorText", textColor);
-  setValue("backgroundColorInput", backgroundColor);
-  setValue("backgroundColorText", backgroundColor);
-  setValue("paddingInput", data.padding || 0);
-  setValue("radiusInput", data.radius || 0);
-
-  const shadow = $("#shadowInput");
-  if (shadow) shadow.checked = Boolean(data.shadow);
-
-  const bind = (id, eventName, callback) => {
-    const el = $("#" + id);
-    if (el) el.addEventListener(eventName, callback);
-  };
-
-  bind("editText", "change", () => {
-    updateSelectedElement(el => {
-      el.innerText = $("#editText").value;
-    });
-  });
-
-  bind("fontSizeInput", "change", () => {
-    updateSelectedElement(el => {
-      const value = Number($("#fontSizeInput").value);
-
-      if (value >= 8 && value <= 160) {
-        el.style.fontSize = value + "px";
-      }
-    });
-  });
-
-  bind("fontWeightInput", "change", () => {
-    updateSelectedElement(el => {
-      el.style.fontWeight = $("#fontWeightInput").value;
-    });
-  });
-
-  function setColor(inputId, textId, property) {
-    const input = $("#" + inputId);
-    const text = $("#" + textId);
-
-    const apply = value => {
-      const probe = document.createElement("span");
-      probe.style.color = value;
-
-      if (!probe.style.color) {
-        showToast("Enter a valid CSS color.");
+  function renderPreview(html, recordHistory = true) {
+    generatedHTML = html;
+    canvasEmpty?.setAttribute("hidden", "");
+
+    // srcdoc displays the actual generated HTML inside the iframe.
+    preview.onload = () => {
+      const doc = getPreviewDocument();
+      if (!doc) {
+        notify("Could not load the website preview.");
         return;
       }
 
-      updateSelectedElement(el => {
-        el.style[property] = value;
+      doc.querySelectorAll("[data-editable]").forEach((element) => {
+        if (!element.dataset.editorId) {
+          element.dataset.editorId = String(++elementCounter);
+        }
+
+        element.style.cursor = "pointer";
+        element.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          selectElement(element);
+        });
       });
 
-      if (input && /^#[0-9a-f]{6}$/i.test(value)) {
-        input.value = value;
-      }
+      updateLayers();
+      updateHistoryButtons();
 
-      if (text) text.value = value;
+      if (recordHistory) saveHistory();
     };
 
-    input?.addEventListener("change", () => apply(input.value));
-    text?.addEventListener("change", () => apply(text.value.trim()));
+    preview.srcdoc = html;
   }
 
-  setColor("textColorInput", "textColorText", "color");
-  setColor("backgroundColorInput", "backgroundColorText", "backgroundColor");
+  function selectElement(element) {
+    if (!element) return;
 
-  bind("paddingInput", "change", () => {
-    updateSelectedElement(el => {
-      const value = Number($("#paddingInput").value);
+    selectedElementId = element.dataset.editorId;
+    const doc = getPreviewDocument();
 
-      if (value >= 0 && value <= 200) {
-        el.style.padding = value + "px";
-      }
-    });
-  });
-
-  bind("radiusInput", "change", () => {
-    updateSelectedElement(el => {
-      const value = Number($("#radiusInput").value);
-
-      if (value >= 0 && value <= 200) {
-        el.style.borderRadius = value + "px";
-      }
-    });
-  });
-
-  bind("shadowInput", "change", () => {
-    updateSelectedElement(el => {
-      el.style.boxShadow = $("#shadowInput").checked
-        ? "0 15px 40px rgba(0,0,0,.22)"
-        : "none";
-    });
-  });
-
-  bind("resetElementBtn", "click", () => {
-    updateSelectedElement(el => {
-      el.removeAttribute("style");
-    });
-  });
-}
-
-function renderLayers() {
-  if (!layersList) return;
-
-  let doc;
-
-  try {
-    doc = preview?.contentDocument;
-  } catch {
-    doc = null;
-  }
-
-  if (!doc?.body) {
-    layersList.innerHTML =
-      '<div class="layers-empty">Generate a website to see layers.</div>';
-    return;
-  }
-
-  const elements = [...doc.body.querySelectorAll("*")]
-    .filter(el => !el.closest("[data-sambhav-ignore]"))
-    .slice(0, 80);
-
-  if (!elements.length) {
-    layersList.innerHTML =
-      '<div class="layers-empty">No editable elements.</div>';
-    return;
-  }
-
-  layersList.innerHTML = "";
-
-  elements.forEach(el => {
-    const item = document.createElement("button");
-    item.type = "button";
-    item.className = "layer-item";
-
-    const tag = el.tagName.toLowerCase();
-    const label = (el.innerText || tag)
-      .trim()
-      .split("\n")[0]
-      .slice(0, 25);
-
-    const tagLabel = document.createElement("span");
-    tagLabel.className = "layer-tag";
-    tagLabel.textContent = tag;
-
-    const nameLabel = document.createElement("span");
-    nameLabel.className = "layer-name";
-    nameLabel.textContent = label || tag;
-
-    item.append(tagLabel, nameLabel);
-
-    item.addEventListener("click", () => {
-      const css = getComputedStyle(el);
-
-      openInspector({
-        selector: getSelector(el),
-        tag,
-        text: el.innerText || el.textContent || "",
-        color: css.color,
-        background: css.backgroundColor,
-        fontSize: parseInt(css.fontSize, 10) || 16,
-        fontWeight: css.fontWeight,
-        padding: parseInt(css.paddingTop, 10) || 0,
-        radius: parseInt(css.borderRadius, 10) || 0,
-        shadow: css.boxShadow !== "none"
+    if (doc) {
+      doc.querySelectorAll("[data-editor-id]").forEach((item) => {
+        item.style.outline = "";
+        item.style.outlineOffset = "";
       });
-    });
 
-    layersList.appendChild(item);
-  });
-}
+      element.style.outline = "2px solid #a78bfa";
+      element.style.outlineOffset = "3px";
+    }
 
-function restoreHistory() {
-  state.html = state.history[state.historyIndex] || "";
-  state.selectedSelector = null;
+    const label = element.dataset.editable || element.tagName.toLowerCase();
 
-  if (preview && state.html) {
-    renderPreview();
-  }
+    if (selectedType) selectedType.textContent = label;
 
-  clearInspector();
-  renderLayers();
-  updateHistoryButtons();
-}
+    const mobileName = $("#mobileSelectionName");
+    if (mobileName) mobileName.textContent = label;
 
-function undo() {
-  if (state.historyIndex <= 0) {
-    showToast("Nothing to undo.");
-    return;
-  }
+    if (!inspector) return;
 
-  state.historyIndex--;
-  restoreHistory();
-}
+    const template = $("#inspectorTemplate");
+    if (!template) return;
 
-function redo() {
-  if (state.historyIndex >= state.history.length - 1) {
-    showToast("Nothing to redo.");
-    return;
-  }
+    inspector.replaceChildren(template.content.cloneNode(true));
 
-  state.historyIndex++;
-  restoreHistory();
-}
+    const textInput = $("#editText");
+    const fontSize = $("#fontSizeInput");
+    const fontWeight = $("#fontWeightInput");
+    const textColor = $("#textColorInput");
+    const textColorText = $("#textColorText");
+    const bgColor = $("#backgroundColorInput");
+    const bgColorText = $("#backgroundColorText");
+    const padding = $("#paddingInput");
+    const radius = $("#radiusInput");
+    const shadow = $("#shadowInput");
 
-function renderPreview() {
-  if (!preview || !state.html) return;
+    if (textInput) textInput.value = element.innerText || "";
+    if (fontSize) fontSize.value = parseInt(getComputedStyle(element).fontSize, 10) || 16;
+    if (fontWeight) fontWeight.value = getComputedStyle(element).fontWeight;
 
-  try {
-    const html = addPreviewBase(state.html);
+    if (textColor) {
+      textColor.value = rgbToHex(getComputedStyle(element).color);
+    }
 
-    preview.onload = () => {
-      renderLayers();
+    if (textColorText && textColor) {
+      textColorText.value = textColor.value;
+    }
+
+    if (bgColor) {
+      const bg = getComputedStyle(element).backgroundColor;
+      bgColor.value = rgbToHex(bg, "#111111");
+    }
+
+    if (bgColorText && bgColor) bgColorText.value = bgColor.value;
+
+    if (padding) padding.value = parseInt(getComputedStyle(element).padding, 10) || 0;
+    if (radius) radius.value = parseInt(getComputedStyle(element).borderRadius, 10) || 0;
+
+    if (shadow) {
+      shadow.checked = getComputedStyle(element).boxShadow !== "none";
+    }
+
+    const apply = (property, value) => {
+      element.style[property] = value;
+      generatedHTML = getPreviewHTML();
     };
 
-    preview.srcdoc = state.previewMode
-      ? html
-      : injectEditorBridge(html);
-  } catch (error) {
-    console.error("Preview rendering failed:", error);
-    showToast("Preview could not be rendered.");
-  }
-}
-
-function loadWebsite(html, addHistory = true) {
-  const clean = normalizeHTML(html);
-
-  if (!clean) {
-    showToast("The generated website is empty.");
-    return false;
-  }
-
-  state.html = clean;
-  state.previewMode = false;
-  state.selectedSelector = null;
-
-  canvasEmpty?.classList.add("hidden");
-
-  if (addHistory) pushHistory(clean);
-
-  clearInspector();
-  renderPreview();
-  updateCanvasSize();
-
-  return true;
-}
-
-function addElement(type) {
-  const doc = preview?.contentDocument;
-
-  if (!doc?.body || !state.html) {
-    showToast("Generate a website first.");
-    return;
-  }
-
-  let el;
-
-  if (type === "text") {
-    el = doc.createElement("h2");
-    el.textContent = "New heading";
-    el.style.cssText = "margin:20px;font-size:32px;color:#111";
-  } else if (type === "button") {
-    el = doc.createElement("button");
-    el.textContent = "Get Started";
-    el.style.cssText =
-      "margin:20px;padding:12px 22px;border:0;border-radius:10px;background:#111;color:#fff;cursor:pointer";
-  } else if (type === "card") {
-    el = doc.createElement("div");
-    el.innerHTML =
-      "<h3>New Card</h3><p>Edit this card from the inspector.</p>";
-    el.style.cssText =
-      "margin:20px;padding:24px;border-radius:16px;background:#f3f3f3;color:#111";
-  } else if (type === "section") {
-    el = doc.createElement("section");
-    el.innerHTML =
-      "<h2>New Section</h2><p>Add your content here.</p>";
-    el.style.cssText =
-      "min-height:250px;padding:60px 30px;background:#111;color:#fff";
-  }
-
-  if (!el) return;
-
-  doc.body.appendChild(el);
-  saveCurrentDocument();
-
-  const css = getComputedStyle(el);
-
-  openInspector({
-    selector: getSelector(el),
-    tag: el.tagName.toLowerCase(),
-    text: el.innerText || "",
-    color: css.color,
-    background: css.backgroundColor,
-    fontSize: parseInt(css.fontSize, 10) || 16,
-    fontWeight: css.fontWeight,
-    padding: parseInt(css.paddingTop, 10) || 0,
-    radius: parseInt(css.borderRadius, 10) || 0,
-    shadow: css.boxShadow !== "none"
-  });
-
-  showToast(type + " added.");
-}
-
-function duplicateSelected() {
-  const el = getSelectedElement();
-
-  if (!el?.parentNode) {
-    showToast("Select an element first.");
-    return;
-  }
-
-  const clone = el.cloneNode(true);
-  el.parentNode.insertBefore(clone, el.nextSibling);
-
-  saveCurrentDocument();
-  showToast("Element duplicated.");
-}
-
-function deleteSelected() {
-  const el = getSelectedElement();
-
-  if (!el) {
-    showToast("Select an element first.");
-    return;
-  }
-
-  if (["html", "body", "head"].includes(el.tagName.toLowerCase())) {
-    showToast("That element cannot be deleted.");
-    return;
-  }
-
-  el.remove();
-  state.selectedSelector = null;
-  saveCurrentDocument();
-  clearInspector();
-  showToast("Element deleted.");
-}
-
-async function generateWebsite() {
-  if (state.generating) return;
-
-  const prompt = promptInput?.value.trim() || "";
-
-  if (!prompt) {
-    showToast("Describe the website first.");
-    promptInput?.focus();
-    return;
-  }
-
-  if (prompt.length > 12000) {
-    showToast("Your prompt is too long.");
-    return;
-  }
-
-  state.generating = true;
-
-  const controller = new AbortController();
-  state.controller = controller;
-
-  if (generateBtn) {
-    generateBtn.disabled = true;
-    generateBtn.style.pointerEvents = "none";
-  }
-
-  showGeneration();
-
-  updateGenerationProgress(
-    10, "INITIALIZING", "Understanding your idea",
-    "Preparing the design system...", 0
-  );
-
-  try {
-    const response = await fetch(BACKEND_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify({ prompt }),
-      signal: controller.signal
+    textInput?.addEventListener("input", () => {
+      element.innerText = textInput.value;
+      generatedHTML = getPreviewHTML();
+      updateLayers();
     });
 
-    const raw = await response.text();
+    fontSize?.addEventListener("input", () => {
+      const value = clamp(fontSize.value, 8, 160);
+      apply("fontSize", value + "px");
+    });
 
-    let data;
+    fontWeight?.addEventListener("change", () => {
+      apply("fontWeight", fontWeight.value);
+    });
 
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      throw new Error(
-        "Server returned an invalid response (HTTP " +
-        response.status + ")."
+    textColor?.addEventListener("input", () => {
+      if (textColorText) textColorText.value = textColor.value;
+      apply("color", textColor.value);
+    });
+
+    textColorText?.addEventListener("change", () => {
+      if (validHex(textColorText.value)) {
+        textColor.value = textColorText.value;
+        apply("color", textColor.value);
+      }
+    });
+
+    bgColor?.addEventListener("input", () => {
+      if (bgColorText) bgColorText.value = bgColor.value;
+      apply("backgroundColor", bgColor.value);
+    });
+
+    bgColorText?.addEventListener("change", () => {
+      if (validHex(bgColorText.value)) {
+        bgColor.value = bgColorText.value;
+        apply("backgroundColor", bgColor.value);
+      }
+    });
+
+    padding?.addEventListener("input", () => {
+      apply("padding", clamp(padding.value, 0, 200) + "px");
+    });
+
+    radius?.addEventListener("input", () => {
+      apply("borderRadius", clamp(radius.value, 0, 200) + "px");
+    });
+
+    shadow?.addEventListener("change", () => {
+      apply(
+        "boxShadow",
+        shadow.checked ? "0 12px 35px #00000055" : "none"
       );
+    });
+
+    $("#resetElementBtn")?.addEventListener("click", () => {
+      element.removeAttribute("style");
+      generatedHTML = getPreviewHTML();
+      selectElement(element);
+      notify("Element styles reset.");
+    });
+
+    $("#inspector")?.classList.add("inspector-open");
+  }
+
+  function clamp(value, min, max) {
+    const number = Number(value);
+    return Math.min(max, Math.max(min, Number.isFinite(number) ? number : min));
+  }
+
+  function validHex(value) {
+    return /^#[0-9a-f]{6}$/i.test(value);
+  }
+
+  function rgbToHex(color, fallback = "#ffffff") {
+    if (validHex(color)) return color;
+
+    const match = color.match(/\d+/g);
+    if (!match || match.length < 3) return fallback;
+
+    return "#" + match.slice(0, 3)
+      .map((part) => Number(part).toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  function getPreviewHTML() {
+    const doc = getPreviewDocument();
+    if (!doc || !doc.documentElement) return generatedHTML;
+
+    const clone = doc.documentElement.cloneNode(true);
+
+    clone.querySelectorAll("[data-editor-id]").forEach((element) => {
+      element.removeAttribute("data-editor-id");
+      element.style.cursor = "";
+      element.style.outline = "";
+      element.style.outlineOffset = "";
+    });
+
+    return "<!DOCTYPE html>\n" + clone.outerHTML;
+  }
+
+  function updateLayers() {
+    const doc = getPreviewDocument();
+    if (!layersList || !doc) return;
+
+    const elements = [...doc.querySelectorAll("[data-editable]")];
+
+    if (!elements.length) {
+      layersList.innerHTML = '<div class="layers-empty">No editable layers found.</div>';
+      return;
     }
 
-    if (!response.ok) {
-      throw new Error(
-        data?.error ||
-        data?.message ||
-        "Request failed (HTTP " + response.status + ")."
-      );
+    layersList.replaceChildren();
+
+    elements.forEach((element) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "layer-item";
+      button.textContent = element.dataset.editable || element.tagName.toLowerCase();
+
+      button.addEventListener("click", () => selectElement(element));
+      layersList.appendChild(button);
+    });
+  }
+
+  function beginGeneration() {
+    const prompt = promptInput?.value.trim();
+
+    if (!prompt) {
+      promptInput?.focus();
+      notify("Describe your website idea first.");
+      return;
     }
 
-    // Support the expected response and common alternate wrappers.
-    const html = typeof data === "string"
-      ? data
-      : data?.html ||
-        data?.website ||
-        data?.result?.html ||
-        data?.data?.html ||
-        "";
+    clearInterval(generationTimer);
+    generationStarted = Date.now();
 
-    if (typeof html !== "string" || !html.trim()) {
-      throw new Error(
-        data?.error ||
-        data?.message ||
-        "The server returned no website HTML."
-      );
+    showScreen(generation);
+
+    const progress = $("#generationProgress");
+    const progressText = $("#progressText");
+    const stage = $("#generationStage");
+    const title = $("#generationTitle");
+    const subtitle = $("#generationSubtitle");
+    const timer = $("#generationTimer");
+    const steps = $$(".generation-step");
+
+    const phases = [
+      ["PHASE 01 / DISCOVERY", "Understanding your idea", "Turning your vision into a design direction…"],
+      ["PHASE 02 / DESIGN", "Designing your experience", "Preparing the layout and visual style…"],
+      ["PHASE 03 / BUILD", "Building your website", "Putting your page together…"],
+      ["PHASE 04 / POLISH", "Finishing the details", "Getting your preview ready…"]
+    ];
+
+    let percent = 0;
+
+    generationTimer = setInterval(() => {
+      percent = Math.min(100, percent + 4);
+
+      if (progress) progress.style.width = percent + "%";
+      if (progressText) progressText.textContent = percent + "%";
+      if (timer) timer.textContent =
+        ((Date.now() - generationStarted) / 1000).toFixed(1) + "s";
+
+      const phaseIndex = Math.min(3, Math.floor(percent / 26));
+      const phase = phases[phaseIndex];
+
+      if (stage) stage.textContent = phase[0];
+      if (title) title.textContent = phase[1];
+      if (subtitle) subtitle.textContent = phase[2];
+
+      steps.forEach((step, index) => {
+        step.classList.toggle("active", index === phaseIndex);
+        step.classList.toggle("completed", index < phaseIndex);
+      });
+
+      if (percent >= 100) {
+        clearInterval(generationTimer);
+
+        projectName = prompt.trim().slice(0, 35) || "Untitled Website";
+
+        renderPreview(buildWebsite(prompt));
+        showScreen(builder);
+
+        const projectButton = $("#projectNameBtn");
+        if (projectButton) {
+          projectButton.innerHTML = "";
+          projectButton.append(
+            document.createTextNode(projectName + " "),
+            Object.assign(document.createElement("span"), {
+              textContent: "⌄"
+            })
+          );
+        }
+
+        notify("Website created. Your preview is ready!");
+      }
+    }, 45);
+  }
+
+  function backHome() {
+    clearInterval(generationTimer);
+    showScreen(landing);
+  }
+
+  generateBtn?.addEventListener("click", beginGeneration);
+  emptyGenerateBtn?.addEventListener("click", () => {
+    if (!promptInput?.value.trim()) {
+      showScreen(landing);
+      promptInput?.focus();
+      notify("Enter your website idea to get started.");
+      return;
     }
+    beginGeneration();
+  });
 
-    updateGenerationProgress(
-      70, "BUILDING", "Building your interface",
-      "Preparing the generated website...", 2
-    );
+  cancelBtn?.addEventListener("click", backHome);
+  $("#backToHomeBtn")?.addEventListener("click", backHome);
 
-    const clean = normalizeHTML(html);
-
-    if (!clean) {
-      throw new Error("Generated website HTML is empty.");
+  promptInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      beginGeneration();
     }
+  });
 
-    state.originalHTML = clean;
-    state.history = [];
-    state.historyIndex = -1;
+  $$(".example-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      if (promptInput) {
+        promptInput.value = chip.dataset.prompt || "";
+        promptInput.focus();
+      }
+    });
+  });
 
-    if (!loadWebsite(clean, true)) {
-      throw new Error("Could not load the generated website.");
-    }
+  $$(".device-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      currentDevice = button.dataset.device || "desktop";
 
-    updateGenerationProgress(
-      100, "COMPLETE", "Your website is ready",
-      "Opening the visual editor...", 3
-    );
+      $$(".device-button").forEach((item) => {
+        item.classList.toggle("active", item === button);
+      });
 
-    showBuilder();
-    showToast("Website generated successfully.");
-  } catch (error) {
-    console.error("[Sambhav generation]", error);
+      if (deviceFrame) {
+        deviceFrame.classList.remove("desktop", "tablet", "mobile");
+        deviceFrame.classList.add(currentDevice);
+      }
 
-    if (error.name === "AbortError") {
-      showLanding();
-      showToast("Generation cancelled.");
+      const label = $("#canvasSizeLabel");
+      if (label) {
+        label.textContent = {
+          desktop: "Desktop · Responsive",
+          tablet: "Tablet · Responsive",
+          mobile: "Mobile · Responsive"
+        }[currentDevice];
+      }
+    });
+  });
+
+  $$(".sidebar-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      $$(".sidebar-tab").forEach((item) => {
+        item.classList.toggle("active", item === tab);
+      });
+
+      const showLayers = tab.dataset.panel === "layers";
+      $("#elementsPanel")?.classList.toggle("hidden", showLayers);
+      $("#layersPanel")?.classList.toggle("hidden", !showLayers);
+
+      updateLayers();
+    });
+  });
+
+  $("#closeInspectorBtn")?.addEventListener("click", () => {
+    $("#inspector")?.classList.remove("inspector-open");
+  });
+
+  $("#mobileInspectorOpen")?.addEventListener("click", () => {
+    $("#inspector")?.classList.add("inspector-open");
+  });
+
+  $("#refreshBtn")?.addEventListener("click", () => {
+    if (generatedHTML) {
+      renderPreview(getPreviewHTML(), false);
+      notify("Preview refreshed.");
     } else {
-      showLanding();
-
-      showToast(
-        error instanceof TypeError
-          ? "Network or CORS error. Check the connection and backend."
-          : error.message || "Generation failed.",
-        6000
-      );
+      notify("Generate a website first.");
     }
-  } finally {
-    stopTimer();
-    state.generating = false;
-    state.controller = null;
-
-    if (generateBtn) {
-      generateBtn.disabled = false;
-      generateBtn.style.pointerEvents = "";
-    }
-  }
-}
-
-function enterPreview() {
-  if (!state.html) {
-    showToast("Generate a website first.");
-    return;
-  }
-
-  state.previewMode = true;
-  renderPreview();
-  $("#previewBtn")?.classList.add("active");
-  showToast("Preview mode enabled.");
-}
-
-function exitPreview() {
-  if (!state.html) return;
-
-  state.previewMode = false;
-  renderPreview();
-  $("#previewBtn")?.classList.remove("active");
-  showToast("Back to editor.");
-}
-
-function togglePreview() {
-  state.previewMode ? exitPreview() : enterPreview();
-}
-
-function setDevice(device) {
-  if (!["desktop", "tablet", "mobile"].includes(device)) return;
-
-  state.device = device;
-
-  deviceFrame?.classList.remove("desktop", "tablet", "mobile");
-  deviceFrame?.classList.add(device);
-
-  $$(".device-button").forEach(button => {
-    button.classList.toggle(
-      "active",
-      button.dataset.device === device
-    );
   });
 
-  const label = $("#canvasSizeLabel");
+  $("#previewBtn")?.addEventListener("click", () => {
+    if (!generatedHTML) {
+      notify("Generate a website first.");
+      return;
+    }
 
-  if (label) {
-    label.textContent =
-      device === "desktop" ? "Desktop · Responsive" :
-      device === "tablet" ? "768 × responsive" :
-      "390 × responsive";
-  }
-}
+    const blob = new Blob([getPreviewHTML()], {
+      type: "text/html;charset=utf-8"
+    });
 
-function updateCanvasSize() {
-  setDevice(state.device);
-}
+    const url = URL.createObjectURL(blob);
+    const tab = window.open(url, "_blank");
 
-function refreshWebsite() {
-  if (!state.html) {
-    showToast("Nothing to refresh.");
-    return;
-  }
+    if (!tab) {
+      URL.revokeObjectURL(url);
+      notify("Allow pop-ups to open the preview.");
+      return;
+    }
 
-  renderPreview();
-  showToast("Preview refreshed.");
-}
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  });
 
-function exportWebsite() {
-  if (!state.html) {
-    showToast("Generate a website first.");
-    return;
-  }
+  $("#exportBtn")?.addEventListener("click", () => {
+    if (!generatedHTML) {
+      notify("Generate a website before exporting.");
+      return;
+    }
 
-  try {
-    const blob = new Blob(
-      [normalizeHTML(state.html)],
-      { type: "text/html;charset=utf-8" }
-    );
+    const html = getPreviewHTML();
+    const blob = new Blob([html], {
+      type: "text/html;charset=utf-8"
+    });
 
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = "sambhav-website.html";
+    link.download = (projectName || "sambhav-website")
+      .replace(/[<>:"/\\|?*\x00-\x1f]/g, "-")
+      .replace(/\s+/g, "-") + ".html";
 
     document.body.appendChild(link);
     link.click();
     link.remove();
 
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
-    showToast("Website exported.");
-  } catch (error) {
-    console.error("Export failed:", error);
-    showToast("Could not export the website.");
-  }
-}
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    notify("HTML file exported.");
+  });
 
-function resetWebsite() {
-  if (!state.originalHTML) {
-    showToast("Nothing to reset.");
-    return;
-  }
+  $("#undoBtn")?.addEventListener("click", () => {
+    if (historyIndex <= 0) return;
 
-  state.html = state.originalHTML;
-  pushHistory(state.html);
-  state.previewMode = false;
+    historyIndex--;
+    renderPreview(
+      "<!DOCTYPE html>\n" + history[historyIndex],
+      false
+    );
+    updateHistoryButtons();
+    notify("Undo complete.");
+  });
 
-  renderPreview();
-  clearInspector();
-  renderLayers();
+  $("#redoBtn")?.addEventListener("click", () => {
+    if (historyIndex >= history.length - 1) return;
 
-  showToast("Website reset.");
-}
+    historyIndex++;
+    renderPreview(
+      "<!DOCTYPE html>\n" + history[historyIndex],
+      false
+    );
+    updateHistoryButtons();
+    notify("Redo complete.");
+  });
 
-function renameProject() {
-  const button = $("#projectNameBtn");
-  if (!button) return;
+  $("#projectNameBtn")?.addEventListener("click", () => {
+    const name = window.prompt("Enter your website name:", projectName);
 
-  const name = window.prompt(
-    "Project name:",
-    button.textContent.trim()
-  );
-
-  if (name?.trim()) {
-    button.textContent = name.trim().slice(0, 50);
-  }
-}
-
-window.addEventListener("message", event => {
-  if (event.source !== preview?.contentWindow) return;
-
-  const data = event.data;
-
-  if (!data || data.type !== "SAMBHAV_SELECT") return;
-  if (state.previewMode) return;
-
-  openInspector(data);
-});
-
-generateBtn?.addEventListener("click", generateWebsite);
-
-$("#emptyGenerateBtn")?.addEventListener("click", () => {
-  promptInput?.focus();
-  showLanding();
-});
-
-$("#cancelGenerationBtn")?.addEventListener("click", () => {
-  if (state.generating) {
-    state.controller?.abort();
-  } else {
-    showLanding();
-  }
-});
-
-promptInput?.addEventListener("keydown", event => {
-  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-    event.preventDefault();
-    generateWebsite();
-  }
-});
-
-$$(".example-chip").forEach(button => {
-  button.addEventListener("click", () => {
-    if (promptInput) {
-      promptInput.value = button.dataset.prompt || "";
-      promptInput.focus();
+    if (name && name.trim()) {
+      projectName = name.trim().slice(0, 80);
+      $("#projectNameBtn").textContent = projectName + " ⌄";
+      notify("Project name updated.");
     }
   });
-});
 
-$("#undoBtn")?.addEventListener("click", undo);
-$("#redoBtn")?.addEventListener("click", redo);
-$("#refreshBtn")?.addEventListener("click", refreshWebsite);
-$("#exportBtn")?.addEventListener("click", exportWebsite);
-$("#previewBtn")?.addEventListener("click", togglePreview);
-$("#projectNameBtn")?.addEventListener("click", renameProject);
-$("#duplicateBtn")?.addEventListener("click", duplicateSelected);
-$("#deleteBtn")?.addEventListener("click", deleteSelected);
+  function addElement(type) {
+    const doc = getPreviewDocument();
 
-$("#backToHomeBtn")?.addEventListener("click", () => {
-  if (state.generating) {
-    state.controller?.abort();
-    return;
+    if (!doc || !generatedHTML) {
+      notify("Generate a website first.");
+      return;
+    }
+
+    const main = doc.querySelector("main") || doc.body;
+    let element;
+
+    if (type === "text") {
+      element = doc.createElement("h2");
+      element.textContent = "Your new heading";
+    } else if (type === "button") {
+      element = doc.createElement("a");
+      element.href = "#features";
+      element.textContent = "Learn more";
+      element.style.display = "inline-block";
+      element.style.background = "#a78bfa";
+      element.style.color = "#160d29";
+      element.style.padding = "12px 20px";
+      element.style.borderRadius = "10px";
+    } else if (type === "card") {
+      element = doc.createElement("article");
+      element.innerHTML = "<h3>New card</h3><p>Add your content here.</p>";
+      element.style.padding = "24px";
+      element.style.border = "1px solid #ffffff30";
+      element.style.borderRadius = "16px";
+      element.style.margin = "16px";
+    } else if (type === "section") {
+      element = doc.createElement("section");
+      element.innerHTML = "<h2>New section</h2><p>Write your content here.</p>";
+      element.style.padding = "50px 24px";
+      element.style.textAlign = "center";
+    } else {
+      return;
+    }
+
+    element.dataset.editable = "New " + type;
+    element.dataset.editorId = String(++elementCounter);
+    main.appendChild(element);
+
+    generatedHTML = getPreviewHTML();
+    selectElement(element);
+    saveHistory();
+    updateLayers();
+    notify("Element added.");
   }
 
-  if (
-    state.html &&
-    !window.confirm("Return home? Your current editor state will be lost.")
-  ) {
-    return;
-  }
-
-  showLanding();
-});
-
-$("#closeInspectorBtn")?.addEventListener("click", () => {
-  inspector?.classList.remove("mobile-open");
-
-  preview?.contentWindow?.postMessage(
-    { type: "SAMBHAV_CLEAR" }, "*"
-  );
-});
-
-$("#mobileInspectorOpen")?.addEventListener("click", () => {
-  if (!state.selectedSelector) {
-    showToast("Select an element first.");
-    return;
-  }
-
-  inspector?.classList.add("mobile-open");
-});
-
-$$("[data-add]").forEach(button => {
-  button.addEventListener("click", () => addElement(button.dataset.add));
-});
-
-$$(".device-button").forEach(button => {
-  button.addEventListener("click", () => {
-    setDevice(button.dataset.device);
-  });
-});
-
-$$(".sidebar-tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    const panel = tab.dataset.panel;
-
-    $$(".sidebar-tab").forEach(item => {
-      item.classList.toggle("active", item === tab);
+  $$("[data-add]").forEach((button) => {
+    button.addEventListener("click", () => {
+      addElement(button.dataset.add);
     });
-
-    $("#elementsPanel")?.classList.toggle(
-      "hidden", panel !== "elements"
-    );
-
-    $("#layersPanel")?.classList.toggle(
-      "hidden", panel !== "layers"
-    );
   });
-});
 
-preview?.addEventListener("load", () => {
-  setTimeout(renderLayers, 100);
-});
+  $("#duplicateBtn")?.addEventListener("click", () => {
+    const doc = getPreviewDocument();
+    const selected = doc?.querySelector(
+      `[data-editor-id="${CSS.escape(selectedElementId || "")}"]`
+    );
 
-document.addEventListener("keydown", event => {
-  const target = event.target;
-  const typing = target instanceof HTMLElement &&
-    (target.isContentEditable ||
-     ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
-
-  if (event.key === "Escape") {
-    inspector?.classList.remove("mobile-open");
-
-    if (state.generating) {
-      state.controller?.abort();
-    } else if (state.previewMode) {
-      exitPreview();
+    if (!selected) {
+      notify("Select an element to duplicate.");
+      return;
     }
-  }
 
-  if (
-    !typing &&
-    (event.ctrlKey || event.metaKey) &&
-    event.key.toLowerCase() === "d"
-  ) {
-    event.preventDefault();
-    duplicateSelected();
-  }
+    const clone = selected.cloneNode(true);
+    clone.dataset.editorId = String(++elementCounter);
+    clone.dataset.editable = (clone.dataset.editable || "Element") + " copy";
 
-  if (
-    !typing &&
-    (event.ctrlKey || event.metaKey) &&
-    event.key.toLowerCase() === "z"
-  ) {
-    event.preventDefault();
-    event.shiftKey ? redo() : undo();
-  }
-});
+    selected.after(clone);
 
-window.addEventListener("error", event => {
-  console.error(
-    "[Sambhav error]",
-    event.message,
-    event.filename,
-    event.lineno
-  );
-});
+    generatedHTML = getPreviewHTML();
+    selectElement(clone);
+    saveHistory();
+    updateLayers();
+    notify("Element duplicated.");
+  });
 
-window.addEventListener("unhandledrejection", event => {
-  console.error("[Sambhav promise error]", event.reason);
-});
+  $("#deleteBtn")?.addEventListener("click", () => {
+    const doc = getPreviewDocument();
+    const selected = doc?.querySelector(
+      `[data-editor-id="${CSS.escape(selectedElementId || "")}"]`
+    );
 
-function initialize() {
-  showLanding();
+    if (!selected) {
+      notify("Select an element to delete.");
+      return;
+    }
+
+    selected.remove();
+    selectedElementId = null;
+    generatedHTML = getPreviewHTML();
+
+    if (selectedType) selectedType.textContent = "Nothing selected";
+    if (inspector) inspector.innerHTML =
+      '<div class="inspector-empty"><strong>Select an element</strong><p>Choose an element in the preview to edit it.</p></div>';
+
+    saveHistory();
+    updateLayers();
+    notify("Element deleted.");
+  });
+
+  $("#canvasArea")?.addEventListener("click", (event) => {
+    if (event.target === canvasEmpty) {
+      showScreen(landing);
+      promptInput?.focus();
+    }
+  });
+
+  // Initial state: show the landing page and an empty preview.
+  showScreen(landing);
   updateHistoryButtons();
-  setDevice("desktop");
-}
 
-initialize();
+  // Make sure the iframe has a valid document even before generation.
+  preview.srcdoc =
+    "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>" +
+    "<body style='font-family:Arial;padding:32px;color:#777'>" +
+    "<h2>Your preview is ready</h2>" +
+    "<p>Enter an idea and click Generate website.</p>" +
+    "</body></html>";
+});
