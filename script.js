@@ -1,149 +1,1253 @@
-(() => {
-  'use strict';
-  // Keep this URL pointed at your existing deployed backend.
-  const BACKEND_URL = 'https://website-builder-backend-nu.vercel.app/api/generate';
-  const $ = (selector, root = document) => root.querySelector(selector);
-  const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const ICON_ARROW = '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>';
-  const ICON_SPARKLE = '<svg class="ui-icon ui-icon-sparkle" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 2.3 7.7L22 12l-7.7 2.3L12 22l-2.3-7.7L2 12l7.7-2.3L12 2Z"/></svg>';
-  const ICON_UNDO = '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5M4 9h9a7 7 0 0 1 0 14h-2"/></svg>';
-  const ICON_REDO = '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5m5 5h-9a7 7 0 0 0 0 14h2"/></svg>';
-  const landing = $('#landingScreen'), generation = $('#generationScreen'), builder = $('#builderScreen');
-  const promptInput = $('#promptInput'), generateBtn = $('#generateBtn'), preview = $('#websitePreview');
-  const frame = $('#deviceFrame'), empty = $('#canvasEmpty'), toast = $('#toast'), toastText = $('#toastText');
-  let currentHTML = '', originalHTML = '', projectName = 'Untitled Website', selectedElement = null;
-  let history = [], historyIndex = -1, generating = false, previewMode = false, timerStart = 0, timerInterval = null, progressInterval = null, toastTimer = null, generationController = null;
-  let selectedSelector = '', selectedElementName = '';
 
-  function showToast(message, type = 'success') {
-    if (!toast || !toastText) return;
-    toastText.textContent = message; toast.classList.toggle('error', type === 'error'); toast.classList.add('show');
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+"use strict";
+
+/* =====================================================
+   SAMBHAV AI — FRONTEND ENGINE
+   Robust generation, visual editor, undo/redo, export
+===================================================== */
+
+const BACKEND_URL =
+  "https://website-builder-backend-nu.vercel.app/api/generate";
+
+const $ = (s, p = document) => p.querySelector(s);
+const $$ = (s, p = document) => [...p.querySelectorAll(s)];
+
+const state = {
+  html: "",
+  originalHTML: "",
+  history: [],
+  historyIndex: -1,
+  selectedSelector: null,
+  generating: false,
+  previewMode: false,
+  device: "desktop",
+  controller: null,
+  toastTimer: null,
+  particleFrame: null,
+  particleResize: null,
+  generationTimer: null,
+  startedAt: 0
+};
+
+const landing = $("#landingScreen");
+const generation = $("#generationScreen");
+const builder = $("#builderScreen");
+const promptInput = $("#promptInput");
+const generateBtn = $("#generateBtn");
+const preview = $("#websitePreview");
+const deviceFrame = $("#deviceFrame");
+const inspector = $(".inspector");
+const inspectorContent = $("#inspectorContent");
+const layersList = $("#layersList");
+const canvasEmpty = $("#canvasEmpty");
+
+/* ------------------ Notifications ------------------ */
+
+function showToast(message, duration = 3500) {
+  const toast = $("#toast");
+  const text = $("#toastText");
+
+  if (!toast || !text) {
+    console.log("[Sambhav]", message);
+    return;
   }
-  function showScreen(which) { landing.hidden = which !== 'landing'; generation.hidden = which !== 'generation'; builder.hidden = which !== 'builder'; }
-  function setStage(step, percent, title, subtitle) {
-    const labels = ['PHASE 01 / DISCOVERY', 'PHASE 02 / DESIGN', 'PHASE 03 / BUILD', 'PHASE 04 / POLISH'];
-    $('#generationStage').textContent = labels[Math.min(step, 3)]; $('#generationProgress').style.width = `${percent}%`; $('#progressText').textContent = `${Math.round(percent)}%`;
-    $('#generationTitle').textContent = title; $('#generationSubtitle').textContent = subtitle;
-    $$('.generation-step').forEach((el, i) => { el.classList.toggle('active', i === step); el.classList.toggle('done', i < step); });
+
+  text.textContent = String(message);
+  toast.classList.add("show");
+
+  clearTimeout(state.toastTimer);
+  state.toastTimer = setTimeout(
+    () => toast.classList.remove("show"),
+    duration
+  );
+}
+
+/* ------------------ Screen management ------------------ */
+
+function showLanding() {
+  stopParticles();
+  stopTimer();
+
+  if (landing) {
+    landing.classList.remove("hidden");
+    landing.style.display = "block";
   }
-  function startGenerationVisuals() {
-    timerStart = performance.now(); let p = 3; setStage(0, p, 'Turning a spark into a universe.', 'Reading your idea and shaping the experience…');
-    clearInterval(timerInterval); clearInterval(progressInterval);
-    timerInterval = setInterval(() => { $('#generationTimer').textContent = `${((performance.now() - timerStart) / 1000).toFixed(1).padStart(4, '0')}s`; }, 100);
-    progressInterval = setInterval(() => { if (!generating) return; p = Math.min(92, p + Math.max(.2, (92 - p) * .025)); const step = p < 28 ? 0 : p < 54 ? 1 : p < 78 ? 2 : 3; const data = [
-      ['Turning a spark into a universe.', 'Reading your idea and shaping the experience…'], ['Finding the visual language.', 'Choosing structure, hierarchy and a design direction…'], ['Building your website.', 'Creating responsive sections and interactive details…'], ['Adding the final stardust.', 'Checking the generated page before opening your canvas…']
-    ]; setStage(step, p, data[step][0], data[step][1]); }, 300);
+
+  if (generation) {
+    generation.classList.add("hidden");
+    generation.style.display = "none";
   }
-  function stopGenerationVisuals() { clearInterval(timerInterval); clearInterval(progressInterval); }
-  function addHistory(html) { if (historyIndex < history.length - 1) history = history.slice(0, historyIndex + 1); history.push(html); if (history.length > 40) history.shift(); historyIndex = history.length - 1; updateHistoryButtons(); }
-  function updateHistoryButtons() { $('#undoBtn').disabled = historyIndex <= 0; $('#redoBtn').disabled = historyIndex < 0 || historyIndex >= history.length - 1; }
-  function normalizeHTML(html) {
-    let out = String(html || '').trim().replace(/^```(?:html)?\s*/i, '').replace(/\s*```$/, '');
-    if (!/<!doctype\s+html/i.test(out)) out = '<!DOCTYPE html>\n' + out;
-    if (!/<html[\s>]/i.test(out)) out = out.replace(/<!doctype[^>]*>/i, '$&\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>') + '</body></html>';
-    if (!/<body[\s>]/i.test(out)) out = out.replace(/<\/html>/i, '<body></body></html>');
-    if (!/<\/body>/i.test(out)) out = out.replace(/<\/html>/i, '</body></html>');
-    if (!/<\/html>/i.test(out)) out += '</html>';
-    return out;
+
+  if (builder) {
+    builder.classList.add("hidden");
+    builder.style.display = "none";
   }
-  function injectEditorBridge(html) {
-    const bridge = `<script data-sambhav-editor-bridge>(function(){
-      let last=null; const esc=s=>String(s).replace(/\\/g,'\\\\').replace(/"/g,'\\"');
-      function selectorFor(el){ if(!el||el===document.body||el===document.documentElement)return 'body'; if(el.id)return '#'+CSS.escape(el.id); const parts=[]; let n=el; while(n&&n!==document.body&&parts.length<5){let p=n.tagName.toLowerCase(); if(n.classList.length)p+='.'+[...n.classList].slice(0,2).map(c=>CSS.escape(c)).join('.'); const par=n.parentElement; if(par){const same=[...par.children].filter(x=>x.tagName===n.tagName);if(same.length>1)p+=':nth-of-type('+(same.indexOf(n)+1)+')'} parts.unshift(p);n=par;}return 'body > '+parts.join(' > ')}
-      function select(el){if(!el||el.closest('[data-sambhav-editor-bridge]'))return; if(last)last.removeAttribute('data-sambhav-selected');last=el;el.setAttribute('data-sambhav-selected','true');parent.postMessage({type:'SAMBHAV_SELECT',selector:selectorFor(el),tag:el.tagName.toLowerCase(),text:(el.innerText||el.textContent||'').trim().slice(0,3000),fontSize:parseInt(getComputedStyle(el).fontSize)||16,fontWeight:getComputedStyle(el).fontWeight,color:rgbToHex(getComputedStyle(el).color),backgroundColor:rgbToHex(getComputedStyle(el).backgroundColor),padding:parseInt(getComputedStyle(el).paddingTop)||0,radius:parseInt(getComputedStyle(el).borderRadius)||0,shadow:getComputedStyle(el).boxShadow!=='none'},'*')}
-      function rgbToHex(v){const m=v.match(/\\d+/g);if(!m||m.length<3)return '#ffffff';return '#'+m.slice(0,3).map(x=>Number(x).toString(16).padStart(2,'0')).join('')}
-      document.addEventListener('click',e=>{const el=e.target.closest('body *');if(!el||el.tagName==='SCRIPT'||el.tagName==='STYLE')return;e.preventDefault();e.stopPropagation();select(el)},true);
-      window.addEventListener('message',e=>{const d=e.data||{};if(d.type==='SAMBHAV_UPDATE'&&last){if(d.text!==undefined){if(last.children.length===0)last.textContent=d.text;else{const textNodes=[...last.childNodes].filter(n=>n.nodeType===3);if(textNodes.length)textNodes[0].textContent=d.text;else last.insertBefore(document.createTextNode(d.text),last.firstChild)}}if(d.styles)Object.keys(d.styles).forEach(k=>{if(d.styles[k]!==undefined)last.style[k]=d.styles[k]});}if(d.type==='SAMBHAV_CLEAR_SELECTION'&&last){last.removeAttribute('data-sambhav-selected');last=null;}if(d.type==='SAMBHAV_REFRESH_SELECTION'&&last)select(last);});
-      const style=document.createElement('style');style.textContent='[data-sambhav-selected="true"]{outline:2px solid #b879ff!important;outline-offset:3px!important;cursor:crosshair!important} body *{cursor:crosshair}';document.head.appendChild(style);
-    })();<\/script>`;
-    const cleaned = html.replace(/<script[^>]*data-sambhav-editor-bridge[^>]*>[\s\S]*?<\/script>/gi, '');
-    return /<\/body>/i.test(cleaned) ? cleaned.replace(/<\/body>/i, `${bridge}</body>`) : cleaned + bridge;
+}
+
+function showGeneration() {
+  if (landing) {
+    landing.classList.add("hidden");
+    landing.style.display = "none";
   }
-  function renderPreview(html) {
-    currentHTML = html; frame.classList.add('visible'); empty.hidden = true;
-    frame.classList.toggle('preview-mode', previewMode);
-    preview.srcdoc = injectEditorBridge(html);
-    renderLayers(); clearInspector(); updateHistoryButtons();
+
+  if (builder) {
+    builder.classList.add("hidden");
+    builder.style.display = "none";
   }
-  function showBuilder(html, title) {
-    currentHTML = normalizeHTML(html); originalHTML = currentHTML; projectName = title || 'Untitled Website'; $('#projectNameBtn').innerHTML = `${escapeHTML(projectName)} <span>⌄</span>`;
-    showScreen('builder'); frame.classList.add('visible'); empty.hidden = true; frame.classList.remove('tablet','mobile'); frame.classList.add('desktop'); renderPreview(currentHTML); addHistory(currentHTML); setDevice('desktop');
+
+  if (generation) {
+    generation.classList.remove("hidden");
+    generation.style.display = "block";
   }
-  function escapeHTML(str) { return String(str).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
-  async function generateWebsite() {
-    const prompt = promptInput.value.trim(); if (!prompt) { promptInput.focus(); showToast('Add a website idea first', 'error'); return; } if (generating) return;
-    generating = true; generateBtn.disabled = true; generateBtn.classList.add('loading'); const oldLabel = generateBtn.innerHTML; generateBtn.innerHTML = '<span class="button-star">'+ICON_SPARKLE+'</span><span>Creating your universe…</span>';
-    showScreen('generation'); startGenerationVisuals(); generationController = new AbortController();
-    try {
-      const response = await fetch(BACKEND_URL, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify({prompt}), signal:generationController.signal, mode:'cors', cache:'no-store' });
-      let data; const raw = await response.text(); try { data = JSON.parse(raw); } catch { throw new Error(`Backend returned a non-JSON response (HTTP ${response.status}). Check the Vercel deployment logs.`); }
-      if (!response.ok) throw new Error(data.error || data.message || `Backend request failed (HTTP ${response.status}).`);
-      if (data.success === false) throw new Error(data.error || 'The backend could not generate this website.');
-      const html = data.html || data.website || data.output || data.result;
-      if (typeof html !== 'string' || !html.trim()) throw new Error('The backend responded, but no HTML was returned. Check the /api/generate response format.');
-      setStage(3,100,'Your universe is ready.','Opening your website canvas…'); await new Promise(resolve => setTimeout(resolve, 450)); stopGenerationVisuals(); generating = false; generateBtn.disabled = false; generateBtn.classList.remove('loading'); generateBtn.innerHTML = oldLabel; showBuilder(html, data.title || titleFromPrompt(prompt)); showToast('Website generated. Your canvas is ready');
-    } catch (error) {
-      stopGenerationVisuals(); generating = false; generateBtn.disabled = false; generateBtn.classList.remove('loading'); generateBtn.innerHTML = oldLabel; showScreen('landing');
-      if (error.name === 'AbortError') showToast('Generation cancelled.', 'error');
-      else if (error instanceof TypeError && /fetch/i.test(error.message)) showToast('Could not reach backend. Try the published HTTPS site; Acode preview may trigger CORS.', 'error');
-      else showToast(error.message || 'Something went wrong while generating.', 'error');
-      console.error('[Sambhav generation error]', error);
-    } finally { generationController = null; }
+
+  startTimer();
+  startParticles();
+}
+
+function showBuilder() {
+  stopParticles();
+  stopTimer();
+
+  if (landing) {
+    landing.classList.add("hidden");
+    landing.style.display = "none";
   }
-  function titleFromPrompt(prompt) { const words = prompt.replace(/[.!?].*$/s,'').trim().split(/\s+/).slice(0,4).join(' '); return words ? words.charAt(0).toUpperCase()+words.slice(1) : 'Untitled Website'; }
-  function setDevice(device) {
-    frame.classList.remove('desktop','tablet','mobile'); frame.classList.add(device); $$('.device-button').forEach(btn=>btn.classList.toggle('active',btn.dataset.device===device));
-    const labels={desktop:'Desktop · Responsive',tablet:'Tablet · 820px',mobile:'Mobile · 390px'}; $('#canvasSizeLabel').textContent=labels[device]||labels.desktop;
+
+  if (generation) {
+    generation.classList.add("hidden");
+    generation.style.display = "none";
   }
-  function postToPreview(message) { try { preview.contentWindow.postMessage(message, '*'); } catch (e) { console.warn('Preview message failed',e); } }
-  function selectorElement(selector) { try { return preview.contentDocument.querySelector(selector); } catch { return null; } }
-  function clearInspector() { selectedElement=null; selectedSelector=''; selectedElementName=''; $('#selectedType').textContent='Nothing selected'; $('#mobileSelectionName').textContent='Nothing selected'; $('#inspectorContent').innerHTML='<div class="inspector-empty"><div class="empty-select-icon">⌁</div><strong>Select an element</strong><p>Click text or a component inside your preview to adjust it here.</p></div>'; }
-  function hexColor(value) { if(!value)return '#ffffff'; if(value.startsWith('#'))return value.length===4?'#'+[...value.slice(1)].map(c=>c+c).join(''):value.slice(0,7); const m=value.match(/\d+/g); return m&&m.length>=3?'#'+m.slice(0,3).map(n=>Number(n).toString(16).padStart(2,'0')).join(''):'#ffffff'; }
-  function openInspector(data) {
-    selectedSelector=data.selector; selectedElementName=`${data.tag.toUpperCase()} element`; selectedElement=selectorElement(selectedSelector); $('#selectedType').textContent=selectedElementName; $('#mobileSelectionName').textContent=selectedElementName;
-    const template=$('#inspectorTemplate').content.cloneNode(true); $('#inspectorContent').replaceChildren(template);
-    const set=(id,val)=>{const el=$('#'+id,$('#inspectorContent'));if(el&&val!==undefined&&val!==null)el.value=val;};
-    set('editText',data.text||'');set('fontSizeInput',data.fontSize||16);set('fontWeightInput',String(data.fontWeight||400));const tc=hexColor(data.color),bc=hexColor(data.backgroundColor);set('textColorInput',tc);set('textColorText',tc);set('backgroundColorInput',bc);set('backgroundColorText',bc);set('paddingInput',data.padding||0);set('radiusInput',data.radius||0);const shadow=$('#shadowInput',$('#inspectorContent'));if(shadow)shadow.checked=!!data.shadow;
-    bindInspector(); $('#inspector').classList.add('open'); renderLayers();
+
+  if (builder) {
+    builder.classList.remove("hidden");
+    builder.style.display = "block";
   }
-  function bindInspector() {
-    const root=$('#inspectorContent'); const read=id=>$('#'+id,root);
-    const send=(styles={},text)=>{const msg={type:'SAMBHAV_UPDATE',styles};if(text!==undefined)msg.text=text;postToPreview(msg);scheduleSnapshot();};
-    read('editText').addEventListener('input',e=>send({},e.target.value));
-    read('fontSizeInput').addEventListener('input',e=>{const n=clamp(e.target.value,8,160);send({fontSize:n+'px'});});
-    read('fontWeightInput').addEventListener('change',e=>send({fontWeight:e.target.value}));
-    [['textColorInput','color'],['backgroundColorInput','backgroundColor']].forEach(([id,prop])=>read(id).addEventListener('input',e=>{const textId=prop==='color'?'textColorText':'backgroundColorText';read(textId).value=e.target.value;send({[prop]:e.target.value});}));
-    [['textColorText','color','textColorInput'],['backgroundColorText','backgroundColor','backgroundColorInput']].forEach(([id,prop,picker])=>read(id).addEventListener('change',e=>{const value=e.target.value.trim();if(/^#[0-9a-f]{6}$/i.test(value)){read(picker).value=value;send({[prop]:value});}else showToast('Enter a valid hex color like #AABBCC','error');}));
-    read('paddingInput').addEventListener('input',e=>send({padding:clamp(e.target.value,0,200)+'px'}));read('radiusInput').addEventListener('input',e=>send({borderRadius:clamp(e.target.value,0,200)+'px'}));read('shadowInput').addEventListener('change',e=>send({boxShadow:e.target.checked?'0 12px 35px rgba(0,0,0,.22)':'none'}));
-    const reset=read('resetElementBtn');if(reset)reset.addEventListener('click',()=>{postToPreview({type:'SAMBHAV_UPDATE',styles:{fontSize:'',fontWeight:'',color:'',backgroundColor:'',padding:'',borderRadius:'',boxShadow:''}});postToPreview({type:'SAMBHAV_REFRESH_SELECTION'});showToast('Inline styles reset');});
+}
+
+/* ------------------ Generation timer ------------------ */
+
+function startTimer() {
+  stopTimer();
+  state.startedAt = performance.now();
+
+  state.generationTimer = setInterval(() => {
+    const seconds =
+      (performance.now() - state.startedAt) / 1000;
+
+    const el = $("#generationTimer");
+    if (el) el.textContent = seconds.toFixed(1) + "s";
+  }, 100);
+}
+
+function stopTimer() {
+  clearInterval(state.generationTimer);
+  state.generationTimer = null;
+}
+
+/* ------------------ Background particles ------------------ */
+
+function stopParticles() {
+  if (state.particleFrame) {
+    cancelAnimationFrame(state.particleFrame);
+    state.particleFrame = null;
   }
-  let snapshotTimer=null;function scheduleSnapshot(){clearTimeout(snapshotTimer);snapshotTimer=setTimeout(()=>{try{const doc=preview.contentDocument;if(!doc)return;const clone=doc.documentElement.cloneNode(true);clone.querySelectorAll('script[data-sambhav-editor-bridge]').forEach(s=>s.remove());clone.querySelectorAll('[data-sambhav-selected]').forEach(el=>el.removeAttribute('data-sambhav-selected'));const html='<!DOCTYPE html>\n'+clone.outerHTML;if(html!==currentHTML){currentHTML=html;addHistory(currentHTML);renderLayers();}}catch(e){console.warn('Snapshot skipped',e);}},700);}
-  function clamp(value,min,max){const n=Number(value);return Number.isFinite(n)?Math.max(min,Math.min(max,n)):min;}
-  function renderLayers(){const list=$('#layersList');if(!currentHTML){list.innerHTML='<div class="layers-empty">Generate a website to see its layers.</div>';return;}const doc=new DOMParser().parseFromString(currentHTML,'text/html');const nodes=[...doc.body.querySelectorAll('h1,h2,h3,p,a,button,img,section,header,footer,nav,article,div')].filter(el=>!['SCRIPT','STYLE'].includes(el.tagName)).slice(0,80);if(!nodes.length){list.innerHTML='<div class="layers-empty">No editable elements found.</div>';return;}list.innerHTML='';nodes.forEach((el,index)=>{const label=(el.innerText||el.getAttribute('alt')||el.tagName.toLowerCase()).trim().replace(/\s+/g,' ').slice(0,38)||el.tagName.toLowerCase();const btn=document.createElement('button');btn.type='button';btn.className='layer-item'+(selectedSelector&&el.id&&selectedSelector==='#'+CSS.escape(el.id)?' active':'');btn.innerHTML=`<span>${({H1:'H1',H2:'H2',H3:'H3',P:'P',A:'A',BUTTON:'BTN',IMG:'IMG',SECTION:'SEC',HEADER:'HDR',FOOTER:'FTR',NAV:'NAV',ARTICLE:'ART',DIV:'DIV'})[el.tagName]||'DIV'}</span><b>${escapeHTML(label)}</b>`;btn.addEventListener('click',()=>{const selector=el.id?'#'+CSS.escape(el.id):`${el.tagName.toLowerCase()}${[...doc.querySelectorAll(el.tagName.toLowerCase())].indexOf(el)>0?`:nth-of-type(${[...el.parentElement.children].filter(x=>x.tagName===el.tagName).indexOf(el)+1})`:''}`;postToPreview({type:'SAMBHAV_SELECT_BY_SELECTOR',selector});showToast('Select this layer in the preview');});list.appendChild(btn);});}
-  function addElement(kind){if(!preview.contentDocument||!currentHTML){showToast('Generate a website before adding elements.','error');return;}const doc=preview.contentDocument;let el;if(kind==='text'){el=doc.createElement('h2');el.textContent='Your new heading';}else if(kind==='button'){el=doc.createElement('a');el.href='#';el.textContent='Explore more';el.style.cssText='display:inline-block;padding:12px 20px;background:#a78bfa;color:#fff;border-radius:10px;text-decoration:none;';}else if(kind==='card'){el=doc.createElement('div');el.innerHTML='<h3>New card</h3><p>Add your content here.</p>';el.style.cssText='padding:24px;border-radius:16px;background:#f2edff;color:#241735;';}else{el=doc.createElement('section');el.innerHTML='<h2>New section</h2><p>Tell your story here.</p>';el.style.cssText='padding:48px 24px;margin:24px 0;border:1px dashed #b79bff;border-radius:16px;';}el.setAttribute('data-sambhav-added','true');doc.body.appendChild(el);currentHTML=serializePreview();addHistory(currentHTML);postToPreview({type:'SAMBHAV_SELECT_BY_SELECTOR',selector:'[data-sambhav-added="true"]'});renderLayers();showToast(`${kind[0].toUpperCase()+kind.slice(1)} added`);}
-  function serializePreview(){const clone=preview.contentDocument.documentElement.cloneNode(true);clone.querySelectorAll('script[data-sambhav-editor-bridge]').forEach(s=>s.remove());clone.querySelectorAll('[data-sambhav-selected]').forEach(el=>el.removeAttribute('data-sambhav-selected'));clone.querySelectorAll('[data-sambhav-added]').forEach(el=>el.removeAttribute('data-sambhav-added'));return '<!DOCTYPE html>\n'+clone.outerHTML;}
-  function undo(){if(historyIndex<=0)return;historyIndex--;currentHTML=history[historyIndex];renderPreview(currentHTML);updateHistoryButtons();showToast('Undo complete');}
-  function redo(){if(historyIndex>=history.length-1)return;historyIndex++;currentHTML=history[historyIndex];renderPreview(currentHTML);updateHistoryButtons();showToast('Redo complete');}
-  function exportHTML(){const html=currentHTML||originalHTML;if(!html){showToast('Generate a website before exporting.','error');return;}const blob=new Blob([html],{type:'text/html;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=(projectName||'sambhav-website').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'.html';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);showToast('HTML export is ready');}
-  function togglePreview(){previewMode=!previewMode;$('#previewBtn').classList.toggle('active',previewMode);$('#previewBtn').innerHTML=previewMode?'<span>Edit</span><span class="action-glyph"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-.8 4.8L8 20l11.5-11.5a2.1 2.1 0 0 0-3-3L5 17.9Z"/><path d="m14.5 6.5 3 3"/></svg></span>':'<span>Preview</span><span>'+ICON_ARROW+'</span>';postToPreview({type:previewMode?'SAMBHAV_CLEAR_SELECTION':'SAMBHAV_REFRESH_SELECTION'});$('#inspector').classList.toggle('preview-hidden',previewMode);showToast(previewMode?'Preview mode on':'Back to editing');}
-  function cancelGeneration(){if(generationController)generationController.abort();generating=false;stopGenerationVisuals();generateBtn.disabled=false;generateBtn.classList.remove('loading');generateBtn.innerHTML='<span class="button-star">'+ICON_SPARKLE+'</span><span>Generate website</span><span class="button-arrow">'+ICON_ARROW+'</span>';showScreen('landing');}
-  // Idea chips fill the prompt; they do not silently submit a generation request.
-  $$('.example-chip').forEach(button=>button.addEventListener('click',()=>{const idea=(button.dataset.prompt||'').trim();if(!idea){showToast('This idea has no prompt.','error');return;}promptInput.value=idea;promptInput.focus();$$('.example-chip').forEach(chip=>chip.classList.toggle('is-selected',chip===button));showToast('Idea loaded — ready to generate');}));
-  generateBtn.addEventListener('click',generateWebsite);$('#emptyGenerateBtn').addEventListener('click',()=>{showScreen('landing');promptInput.focus();});promptInput.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();generateWebsite();}});
-  $('#cancelGenerationBtn').addEventListener('click',cancelGeneration);$('#backToHomeBtn').addEventListener('click',()=>{showScreen('landing');clearInspector();});$('#undoBtn').addEventListener('click',undo);$('#redoBtn').addEventListener('click',redo);$('#refreshBtn').addEventListener('click',()=>{if(currentHTML){renderPreview(currentHTML);showToast('Preview refreshed');}else showToast('Nothing to refresh yet','error');});$('#exportBtn').addEventListener('click',exportHTML);$('#previewBtn').addEventListener('click',togglePreview);
-  $$('.device-button').forEach(btn=>btn.addEventListener('click',()=>setDevice(btn.dataset.device)));$$('.sidebar-tab').forEach(btn=>btn.addEventListener('click',()=>{$$('.sidebar-tab').forEach(b=>b.classList.toggle('active',b===btn));$('#elementsPanel').classList.toggle('hidden',btn.dataset.panel!=='elements');$('#layersPanel').classList.toggle('hidden',btn.dataset.panel!=='layers');}));$$('[data-add]').forEach(btn=>btn.addEventListener('click',()=>addElement(btn.dataset.add)));
-  $('#duplicateBtn').addEventListener('click',()=>{if(!selectedSelector||!preview.contentDocument){showToast('Select an element in the preview first.','error');return;}const el=preview.contentDocument.querySelector(selectedSelector);if(!el||!el.parentElement){showToast('This element cannot be duplicated.','error');return;}const clone=el.cloneNode(true);clone.removeAttribute('id');clone.removeAttribute('data-sambhav-selected');clone.setAttribute('data-sambhav-added','true');el.after(clone);currentHTML=serializePreview();addHistory(currentHTML);renderLayers();showToast('Element duplicated');});
-  $('#deleteBtn').addEventListener('click',()=>{if(!selectedSelector||!preview.contentDocument){showToast('Select an element in the preview first.','error');return;}const el=preview.contentDocument.querySelector(selectedSelector);if(!el||['BODY','HTML'].includes(el.tagName)){showToast('That element cannot be deleted.','error');return;}el.remove();currentHTML=serializePreview();addHistory(currentHTML);clearInspector();renderLayers();showToast('Element deleted');});
-  $('#closeInspectorBtn').addEventListener('click',()=>$('#inspector').classList.remove('open'));$('#mobileInspectorOpen').addEventListener('click',()=>$('#inspector').classList.toggle('open'));
-  $('#projectNameBtn').addEventListener('click',()=>{const next=prompt('Name your website',projectName);if(next&&next.trim()){projectName=next.trim().slice(0,80);$('#projectNameBtn').innerHTML=`${escapeHTML(projectName)} <span>⌄</span>`;showToast('Project renamed');}});
-  $$('.sidebar-tab').forEach(btn=>btn.addEventListener('click',()=>{if(btn.dataset.panel==='layers')renderLayers();}));
-  preview.addEventListener('load',()=>{if(currentHTML){postToPreview({type:'SAMBHAV_CLEAR_SELECTION'});}});
-  window.addEventListener('message',event=>{const data=event.data;if(!data||typeof data!=='object')return;if(data.type==='SAMBHAV_SELECT'){selectedSelector=data.selector||'';selectedElement=selectorElement(selectedSelector);openInspector(data);}});
-  // Add selector-based selection support to the bridge without exposing parent access to the generated page.
-  const originalInject = injectEditorBridge;
-  injectEditorBridge = function(html){let result=originalInject(html);const extra=`<script data-sambhav-selector-bridge>window.addEventListener('message',function(e){var d=e.data||{};if(d.type==='SAMBHAV_SELECT_BY_SELECTOR'){try{var el=document.querySelector(d.selector);if(el){el.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));}}catch(_){}}});<\/script>`;return result.replace(/<\/body>/i,extra+'</body>');};
-  // Subtle pointer-reactive aurora; motion stays decorative and never intercepts controls.
-  const landingScreen=$('#landingScreen');landingScreen.addEventListener('pointermove',e=>{if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const x=(e.clientX/innerWidth-.5)*10,y=(e.clientY/innerHeight-.5)*8;landingScreen.style.setProperty('--pointer-x',`${x}px`);landingScreen.style.setProperty('--pointer-y',`${y}px`);});
-  showScreen('landing');updateHistoryButtons();setDevice('desktop');
+
+  if (state.particleResize) {
+    window.removeEventListener(
+      "resize",
+      state.particleResize
+    );
+    state.particleResize = null;
+  }
+
+  const canvas = $("#particleCanvas");
+  if (canvas) {
+    const ctx = canvas.getContext("2d");
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
+function startParticles() {
+  stopParticles();
+
+  const canvas = $("#particleCanvas");
+  if (!canvas || !generation) return;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const particles = [];
+  const mobile = window.innerWidth < 700;
+  const count = mobile ? 55 : 120;
+
+  function resize() {
+    const rect = generation.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+    canvas.style.pointerEvents = "none";
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  resize();
+  state.particleResize = resize;
+  window.addEventListener("resize", resize);
+
+  const width = () => generation.clientWidth;
+  const height = () => generation.clientHeight;
+
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: Math.random() * width(),
+      y: Math.random() * height(),
+      vx: (Math.random() - 0.5) * 0.25,
+      vy: (Math.random() - 0.5) * 0.25,
+      size: Math.random() * 1.5 + 0.4,
+      alpha: Math.random() * 0.5 + 0.15
+    });
+  }
+
+  function draw() {
+    if (!generation || generation.style.display === "none") {
+      state.particleFrame = null;
+      return;
+    }
+
+    const w = width();
+    const h = height();
+
+    ctx.clearRect(0, 0, w, h);
+
+    for (const p of particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.x < 0) p.x = w;
+      if (p.x > w) p.x = 0;
+      if (p.y < 0) p.y = h;
+      if (p.y > h) p.y = 0;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(220,195,255,${p.alpha})`;
+      ctx.fill();
+    }
+
+    if (!mobile) {
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const a = particles[i];
+          const b = particles[j];
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const d = Math.hypot(dx, dy);
+
+          if (d < 90) {
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.strokeStyle =
+              `rgba(190,150,255,${(1 - d / 90) * 0.12})`;
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    state.particleFrame = requestAnimationFrame(draw);
+  }
+
+  draw();
+}
+
+/* ------------------ Generation progress ------------------ */
+
+function updateGenerationProgress(
+  percent, stage, title, subtitle, step
+) {
+  const progress = $("#generationProgress");
+  const progressText = $("#progressText");
+
+  if (progress) progress.style.width = percent + "%";
+  if (progressText) progressText.textContent = percent + "%";
+
+  if ($("#generationStage"))
+    $("#generationStage").textContent = stage;
+
+  if ($("#generationTitle"))
+    $("#generationTitle").textContent = title;
+
+  if ($("#generationSubtitle"))
+    $("#generationSubtitle").textContent = subtitle;
+
+  $$(".generation-step").forEach((el, i) => {
+    el.classList.toggle("active", i <= step);
+  });
+}
+
+/* ------------------ HTML helpers ------------------ */
+
+function normalizeHTML(value) {
+  let html = String(value || "").trim();
+
+  html = html
+    .replace(/^```(?:html)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+
+  if (!html) return "";
+
+  if (!/<html[\s>]/i.test(html)) {
+    html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>${html}</body>
+</html>`;
+  }
+
+  if (!/<\/body>/i.test(html)) html += "\n</body>";
+  if (!/<\/html>/i.test(html)) html += "\n</html>";
+
+  return html;
+}
+
+function escapeHTML(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function getSelector(el) {
+  if (!el || el.nodeType !== 1) return null;
+
+  const parts = [];
+  let current = el;
+
+  while (current && current.nodeType === 1 &&
+         current.tagName.toLowerCase() !== "html") {
+    let part = current.tagName.toLowerCase();
+
+    if (current.id) {
+      parts.unshift(part + "#" + CSS.escape(current.id));
+      break;
+    }
+
+    const parent = current.parentElement;
+
+    if (parent) {
+      const siblings = [...parent.children].filter(
+        item => item.tagName === current.tagName
+      );
+
+      if (siblings.length > 1) {
+        part += `:nth-of-type(${siblings.indexOf(current) + 1})`;
+      }
+    }
+
+    parts.unshift(part);
+    current = parent;
+  }
+
+  return parts.join(" > ");
+}
+
+function injectEditorBridge(html) {
+  const bridge = `
+<script>
+(function () {
+  function path(el) {
+    if (!el || el.nodeType !== 1) return null;
+    const parts = [];
+    let current = el;
+
+    while (current && current.nodeType === 1 &&
+           current.tagName.toLowerCase() !== "html") {
+      let part = current.tagName.toLowerCase();
+
+      if (current.id) {
+        parts.unshift(part + "#" + CSS.escape(current.id));
+        break;
+      }
+
+      const parent = current.parentElement;
+      if (parent) {
+        const siblings = Array.from(parent.children)
+          .filter(x => x.tagName === current.tagName);
+
+        if (siblings.length > 1) {
+          part += ":nth-of-type(" +
+            (siblings.indexOf(current) + 1) + ")";
+        }
+      }
+
+      parts.unshift(part);
+      current = parent;
+    }
+
+    return parts.join(" > ");
+  }
+
+  let selected = null;
+
+  function clear() {
+    if (selected) {
+      selected.style.outline =
+        selected.dataset.oldOutline || "";
+      selected.style.outlineOffset =
+        selected.dataset.oldOutlineOffset || "";
+    }
+    selected = null;
+  }
+
+  function select(el) {
+    clear();
+    selected = el;
+
+    selected.dataset.oldOutline = selected.style.outline || "";
+    selected.dataset.oldOutlineOffset =
+      selected.style.outlineOffset || "";
+
+    selected.style.outline = "2px solid #9d76ff";
+    selected.style.outlineOffset = "2px";
+
+    const cs = getComputedStyle(el);
+
+    parent.postMessage({
+      type: "SAMBHAV_SELECT",
+      selector: path(el),
+      tag: el.tagName.toLowerCase(),
+      text: el.innerText || "",
+      color: cs.color,
+      background: cs.backgroundColor,
+      fontSize: parseInt(cs.fontSize) || 16,
+      fontWeight: cs.fontWeight,
+      padding: parseInt(cs.paddingTop) || 0,
+      radius: parseInt(cs.borderRadius) || 0,
+      shadow: cs.boxShadow !== "none"
+    }, "*");
+  }
+
+  document.addEventListener("click", function (event) {
+    if (event.target.closest("[data-sambhav-ignore]")) return;
+    event.preventDefault();
+    event.stopPropagation();
+    select(event.target);
+  }, true);
+
+  addEventListener("message", function (event) {
+    if (event.data && event.data.type === "SAMBHAV_CLEAR") clear();
+  });
 })();
+<\/script>`;
+
+  return /<\/body>/i.test(html)
+    ? html.replace(/<\/body>/i, bridge + "\n</body>")
+    : html + bridge;
+}
+
+/* ------------------ History ------------------ */
+
+function pushHistory(html) {
+  if (!html) return;
+
+  if (state.history[state.historyIndex] === html) return;
+
+  state.history = state.history.slice(0, state.historyIndex + 1);
+  state.history.push(html);
+
+  if (state.history.length > 50) state.history.shift();
+
+  state.historyIndex = state.history.length - 1;
+  updateHistoryButtons();
+}
+
+function updateHistoryButtons() {
+  const undoBtn = $("#undoBtn");
+  const redoBtn = $("#redoBtn");
+
+  if (undoBtn) undoBtn.disabled = state.historyIndex <= 0;
+
+  if (redoBtn)
+    redoBtn.disabled =
+      state.historyIndex >= state.history.length - 1;
+}
+
+function restoreHistory() {
+  state.html = state.history[state.historyIndex] || "";
+  state.selectedSelector = null;
+
+  preview.srcdoc = injectEditorBridge(state.html);
+  clearInspector();
+  renderLayers();
+  updateHistoryButtons();
+}
+
+function undo() {
+  if (state.historyIndex <= 0) {
+    showToast("Nothing to undo.");
+    return;
+  }
+
+  state.historyIndex--;
+  restoreHistory();
+}
+
+function redo() {
+  if (state.historyIndex >= state.history.length - 1) {
+    showToast("Nothing to redo.");
+    return;
+  }
+
+  state.historyIndex++;
+  restoreHistory();
+}
+
+/* ------------------ Website loading ------------------ */
+
+function loadWebsite(html, addHistory = true) {
+  const clean = normalizeHTML(html);
+
+  if (!clean) {
+    showToast("The generated website is empty.");
+    return;
+  }
+
+  state.html = clean;
+  state.previewMode = false;
+
+  if (canvasEmpty) canvasEmpty.classList.add("hidden");
+
+  if (addHistory) pushHistory(clean);
+
+  state.selectedSelector = null;
+  preview.srcdoc = injectEditorBridge(clean);
+
+  clearInspector();
+  renderLayers();
+  updateCanvasSize();
+}
+
+function getSelectedElement() {
+  if (!state.selectedSelector) return null;
+
+  try {
+    return preview.contentDocument.querySelector(
+      state.selectedSelector
+    );
+  } catch {
+    return null;
+  }
+}
+
+function saveCurrentDocument() {
+  try {
+    const doc = preview.contentDocument;
+    if (!doc) return;
+
+    state.html = normalizeHTML(
+      "<!DOCTYPE html>\n" + doc.documentElement.outerHTML
+    );
+
+    pushHistory(state.html);
+    renderLayers();
+  } catch (error) {
+    console.error("Could not save document:", error);
+  }
+}
+
+function updateSelectedElement(callback) {
+  const el = getSelectedElement();
+
+  if (!el) {
+    showToast("Select an element first.");
+    return;
+  }
+
+  callback(el);
+  saveCurrentDocument();
+}
+
+/* ------------------ Inspector ------------------ */
+
+function clearInspector() {
+  state.selectedSelector = null;
+
+  if ($("#selectedType"))
+    $("#selectedType").textContent = "No selection";
+
+  if ($("#mobileSelectionName"))
+    $("#mobileSelectionName").textContent = "Nothing selected";
+
+  if (inspectorContent) {
+    inspectorContent.innerHTML = `
+      <div class="inspector-empty">
+        <div class="empty-select-icon">⌁</div>
+        <strong>Select an element</strong>
+        <p>Click something inside the website preview to edit it.</p>
+      </div>`;
+  }
+
+  inspector?.classList.remove("mobile-open");
+}
+
+function rgbToHex(value) {
+  if (!value) return "#ffffff";
+  if (value.startsWith("#")) return value;
+
+  const match = value.match(
+    /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/
+  );
+
+  if (!match) return "#ffffff";
+
+  return "#" + match.slice(1, 4).map(x =>
+    Number(x).toString(16).padStart(2, "0")
+  ).join("");
+}
+
+function openInspector(data) {
+  const template = $("#inspectorTemplate");
+  if (!template || !inspectorContent) return;
+
+  state.selectedSelector = data.selector;
+  inspectorContent.innerHTML = "";
+  inspectorContent.appendChild(template.content.cloneNode(true));
+
+  if ($("#selectedType"))
+    $("#selectedType").textContent = "<" + data.tag + ">";
+
+  if ($("#mobileSelectionName"))
+    $("#mobileSelectionName").textContent = data.tag + " selected";
+
+  if (window.innerWidth <= 850)
+    inspector?.classList.add("mobile-open");
+
+  $("#editText").value = data.text || "";
+  $("#fontSizeInput").value = data.fontSize || 16;
+  $("#fontWeightInput").value = data.fontWeight || "400";
+
+  const textColor = rgbToHex(data.color);
+  const bgColor = rgbToHex(data.background);
+
+  $("#textColorInput").value = textColor;
+  $("#textColorText").value = textColor;
+  $("#backgroundColorInput").value = bgColor;
+  $("#backgroundColorText").value = bgColor;
+
+  $("#paddingInput").value = data.padding || 0;
+  $("#radiusInput").value = data.radius || 0;
+  $("#shadowInput").checked = Boolean(data.shadow);
+
+  const bind = (id, fn, event = "input") => {
+    const el = $("#" + id);
+    if (el) el.addEventListener(event, fn);
+  };
+
+  bind("editText", () => updateSelectedElement(
+    el => { el.innerText = $("#editText").value; }
+  ));
+
+  bind("fontSizeInput", () => updateSelectedElement(
+    el => {
+      const size = Number($("#fontSizeInput").value);
+      if (size >= 8 && size <= 160) el.style.fontSize = size + "px";
+    }
+  ));
+
+  bind("fontWeightInput", () => updateSelectedElement(
+    el => { el.style.fontWeight = $("#fontWeightInput").value; },
+    "change"
+  ), "change");
+
+  function setColor(inputId, textId, property) {
+    const input = $("#" + inputId);
+    const text = $("#" + textId);
+
+    const apply = value => {
+      const probe = document.createElement("span");
+      probe.style.color = "";
+      probe.style.color = value;
+
+      if (!probe.style.color) {
+        showToast("Enter a valid CSS color.");
+        return;
+      }
+
+      updateSelectedElement(el => {
+        el.style[property] = value;
+      });
+
+      if (input && /^#[0-9a-f]{6}$/i.test(value))
+        input.value = value;
+
+      if (text) text.value = value;
+    };
+
+    input?.addEventListener("input", () => apply(input.value));
+    text?.addEventListener("change", () => apply(text.value.trim()));
+  }
+
+  setColor("textColorInput", "textColorText", "color");
+  setColor("backgroundColorInput", "backgroundColorText", "backgroundColor");
+
+  bind("paddingInput", () => updateSelectedElement(el => {
+    el.style.padding = Math.max(
+      0, Number($("#paddingInput").value) || 0
+    ) + "px";
+  }));
+
+  bind("radiusInput", () => updateSelectedElement(el => {
+    el.style.borderRadius = Math.max(
+      0, Number($("#radiusInput").value) || 0
+    ) + "px";
+  }));
+
+  bind("shadowInput", () => updateSelectedElement(el => {
+    el.style.boxShadow = $("#shadowInput").checked
+      ? "0 15px 40px rgba(0,0,0,.22)"
+      : "none";
+  }), "change");
+}
+
+/* ------------------ Layers ------------------ */
+
+function renderLayers() {
+  if (!layersList) return;
+
+  const doc = preview?.contentDocument;
+
+  if (!doc?.body) {
+    layersList.innerHTML =
+      '<div class="layers-empty">Generate a website to see layers.</div>';
+    return;
+  }
+
+  const elements = [...doc.body.querySelectorAll("*")].slice(0, 80);
+
+  if (!elements.length) {
+    layersList.innerHTML =
+      '<div class="layers-empty">No editable elements.</div>';
+    return;
+  }
+
+  layersList.innerHTML = "";
+
+  elements.forEach(el => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "layer-item";
+
+    const tag = el.tagName.toLowerCase();
+    const label = (el.innerText || tag).trim().split("\n")[0].slice(0, 25);
+
+    item.innerHTML =
+      `<span class="layer-tag">${escapeHTML(tag)}</span>
+       <span class="layer-name">${escapeHTML(label || tag)}</span>`;
+
+    item.addEventListener("click", () => {
+      const cs = getComputedStyle(el);
+
+      openInspector({
+        selector: getSelector(el),
+        tag,
+        text: el.innerText || "",
+        color: cs.color,
+        background: cs.backgroundColor,
+        fontSize: parseInt(cs.fontSize) || 16,
+        fontWeight: cs.fontWeight,
+        padding: parseInt(cs.paddingTop) || 0,
+        radius: parseInt(cs.borderRadius) || 0,
+        shadow: cs.boxShadow !== "none"
+      });
+    });
+
+    layersList.appendChild(item);
+  });
+}
+
+/* ------------------ Add / duplicate / delete ------------------ */
+
+function addElement(type) {
+  const doc = preview?.contentDocument;
+
+  if (!doc?.body || !state.html) {
+    showToast("Generate a website first.");
+    return;
+  }
+
+  let el;
+
+  if (type === "text") {
+    el = doc.createElement("h2");
+    el.textContent = "New heading";
+    el.style.cssText = "margin:20px;font-size:32px;color:#111";
+  } else if (type === "button") {
+    el = doc.createElement("button");
+    el.textContent = "Get Started";
+    el.style.cssText =
+      "margin:20px;padding:12px 22px;border:0;border-radius:10px;background:#111;color:#fff;cursor:pointer";
+  } else if (type === "card") {
+    el = doc.createElement("div");
+    el.innerHTML = "<h3>New Card</h3><p>Edit this card from the inspector.</p>";
+    el.style.cssText =
+      "margin:20px;padding:24px;border-radius:16px;background:#f3f3f3;color:#111";
+  } else if (type === "section") {
+    el = doc.createElement("section");
+    el.innerHTML = "<h2>New Section</h2><p>Add your content here.</p>";
+    el.style.cssText =
+      "min-height:250px;padding:60px 30px;background:#111;color:#fff";
+  }
+
+  if (!el) return;
+
+  doc.body.appendChild(el);
+  saveCurrentDocument();
+
+  const cs = getComputedStyle(el);
+
+  openInspector({
+    selector: getSelector(el),
+    tag: el.tagName.toLowerCase(),
+    text: el.innerText || "",
+    color: cs.color,
+    background: cs.backgroundColor,
+    fontSize: parseInt(cs.fontSize) || 16,
+    fontWeight: cs.fontWeight,
+    padding: parseInt(cs.paddingTop) || 0,
+    radius: parseInt(cs.borderRadius) || 0,
+    shadow: cs.boxShadow !== "none"
+  });
+
+  showToast(type + " added.");
+}
+
+function duplicateSelected() {
+  const el = getSelectedElement();
+
+  if (!el || !el.parentNode) {
+    showToast("Select an element first.");
+    return;
+  }
+
+  const clone = el.cloneNode(true);
+  el.parentNode.insertBefore(clone, el.nextSibling);
+  saveCurrentDocument();
+  showToast("Element duplicated.");
+}
+
+function deleteSelected() {
+  const el = getSelectedElement();
+
+  if (!el) {
+    showToast("Select an element first.");
+    return;
+  }
+
+  if (["html", "body"].includes(el.tagName.toLowerCase())) {
+    showToast("That element cannot be deleted.");
+    return;
+  }
+
+  el.remove();
+  state.selectedSelector = null;
+  saveCurrentDocument();
+  clearInspector();
+  showToast("Element deleted.");
+}
+
+/* ------------------ Generation ------------------ */
+
+async function generateWebsite() {
+  if (state.generating) return;
+
+  const prompt = promptInput?.value.trim() || "";
+
+  if (!prompt) {
+    showToast("Describe the website first.");
+    promptInput?.focus();
+    return;
+  }
+
+  if (prompt.length > 12000) {
+    showToast("Your prompt is too long.");
+    return;
+  }
+
+  state.generating = true;
+  state.controller = new AbortController();
+
+  if (generateBtn) {
+    generateBtn.disabled = true;
+    generateBtn.style.pointerEvents = "none";
+  }
+
+  try {
+    // Any failure below is caught and returns to the landing screen.
+    showGeneration();
+
+    updateGenerationProgress(
+      10, "INITIALIZING", "Understanding your idea",
+      "Preparing the design system...", 0
+    );
+
+    await sleep(250);
+
+    updateGenerationProgress(
+      30, "PLANNING", "Designing your experience",
+      "Choosing layout and visual direction...", 1
+    );
+
+    updateGenerationProgress(
+      45, "BUILDING", "Building the interface",
+      "Generating responsive HTML and CSS...", 2
+    );
+
+    const response = await fetch(BACKEND_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({ prompt }),
+      signal: state.controller.signal
+    });
+
+    const raw = await response.text();
+    let data;
+
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      throw new Error(
+        "Backend returned non-JSON data (HTTP " +
+        response.status + "). Check the API response."
+      );
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || data.message ||
+        "Server returned HTTP " + response.status
+      );
+    }
+
+    if (!data || data.success !== true || !data.html) {
+      throw new Error(
+        data?.error || "The backend did not return website HTML."
+      );
+    }
+
+    const html = normalizeHTML(data.html);
+
+    if (!html) throw new Error("Generated HTML was empty.");
+
+    updateGenerationProgress(
+      85, "FINISHING", "Polishing the details",
+      "Preparing your visual editor...", 3
+    );
+
+    await sleep(200);
+
+    state.originalHTML = html;
+    state.history = [];
+    state.historyIndex = -1;
+    state.html = html;
+
+    showBuilder();
+    loadWebsite(html, true);
+
+    updateGenerationProgress(
+      100, "COMPLETE", "Your website is ready",
+      "Opening the visual editor...", 3
+    );
+
+    showToast("Website generated successfully.");
+
+  } catch (error) {
+    console.error("Sambhav generation error:", error);
+
+    // Abort and network failures must never leave the loading screen stuck.
+    stopParticles();
+    stopTimer();
+    showLanding();
+
+    if (error.name === "AbortError") {
+      showToast("Generation cancelled.");
+    } else if (error instanceof TypeError) {
+      showToast(
+        "Network request failed. Check Acode preview, internet and API CORS settings.",
+        6000
+      );
+    } else {
+      showToast(error.message || "Generation failed.", 6000);
+    }
+
+  } finally {
+    stopParticles();
+    stopTimer();
+
+    state.generating = false;
+    state.controller = null;
+
+    if (generateBtn) {
+      generateBtn.disabled = false;
+      generateBtn.style.pointerEvents = "";
+    }
+  }
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/* ------------------ Preview mode ------------------ */
+
+function enterPreview() {
+  if (!state.html) {
+    showToast("Generate a website first.");
+    return;
+  }
+
+  state.previewMode = true;
+  preview.srcdoc = state.html;
+
+  if (canvasEmpty) canvasEmpty.classList.add("hidden");
+
+  $("#previewBtn")?.classList.add("active");
+  showToast("Preview mode enabled.");
+}
+
+function exitPreview() {
+  if (!state.html) return;
+
+  state.previewMode = false;
+  preview.srcdoc = injectEditorBridge(state.html);
+  $("#previewBtn")?.classList.remove("active");
+
+  showToast("Back to editor.");
+}
+
+function togglePreview() {
+  state.previewMode ? exitPreview() : enterPreview();
+}
+
+/* ------------------ Device sizes ------------------ */
+
+function setDevice(device) {
+  state.device = device;
+
+  deviceFrame?.classList.remove("desktop", "tablet", "mobile");
+  deviceFrame?.classList.add(device);
+
+  $$(".device-button").forEach(button => {
+    button.classList.toggle(
+      "active",
+      button.dataset.device === device
+    );
+  });
+
+  const label = $("#canvasSizeLabel");
+
+  if (label) {
+    label.textContent =
+      device === "desktop" ? "Responsive" :
+      device === "tablet" ? "768 × responsive" :
+      "390 × responsive";
+  }
+}
+
+function updateCanvasSize() {
+  setDevice(state.device);
+}
+
+/* ------------------ Refresh / export / reset ------------------ */
+
+function refreshWebsite() {
+  if (!state.html) {
+    showToast("Nothing to refresh.");
+    return;
+  }
+
+  preview.srcdoc = state.previewMode
+    ? state.html
+    : injectEditorBridge(state.html);
+
+  clearInspector();
+  showToast("Preview refreshed.");
+}
+
+function exportWebsite() {
+  if (!state.html) {
+    showToast("Generate a website first.");
+    return;
+  }
+
+  const blob = new Blob(
+    [normalizeHTML(state.html)],
+    { type: "text/html;charset=utf-8" }
+  );
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = "sambhav-website.html";
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast("Website exported.");
+}
+
+function resetWebsite() {
+  if (!state.originalHTML) {
+    showToast("Nothing to reset.");
+    return;
+  }
+
+  state.html = normalizeHTML(state.originalHTML);
+  pushHistory(state.html);
+  preview.srcdoc = injectEditorBridge(state.html);
+  clearInspector();
+  renderLayers();
+
+  showToast("Website reset.");
+}
+
+function renameProject() {
+  const button = $("#projectNameBtn");
+  if (!button) return;
+
+  const name = window.prompt(
+    "Project name:",
+    button.textContent.trim()
+  );
+
+  if (name?.trim()) {
+    button.textContent = name.trim().slice(0, 50);
+  }
+}
+
+/* ------------------ Messages from iframe ------------------ */
+
+window.addEventListener("message", event => {
+  const data = event.data;
+
+  if (!data || data.type !== "SAMBHAV_SELECT") return;
+  if (state.previewMode) return;
+
+  openInspector(data);
+});
+
+/* ------------------ Event bindings ------------------ */
+
+generateBtn?.addEventListener("click", generateWebsite);
+
+promptInput?.addEventListener("keydown", event => {
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    event.preventDefault();
+    generateWebsite();
+  }
+});
+
+$$(".example-chip").forEach(button => {
+  button.addEventListener("click", () => {
+    if (promptInput) {
+      promptInput.value = button.dataset.prompt || "";
+      promptInput.focus();
+    }
+  });
+});
+
+$("#undoBtn")?.addEventListener("click", undo);
+$("#redoBtn")?.addEventListener("click", redo);
+$("#refreshBtn")?.addEventListener("click", refreshWebsite);
+$("#exportBtn")?.addEventListener("click", exportWebsite);
+$("#previewBtn")?.addEventListener("click", togglePreview);
+$("#projectNameBtn")?.addEventListener("click", renameProject);
+$("#duplicateBtn")?.addEventListener("click", duplicateSelected);
+$("#deleteBtn")?.addEventListener("click", deleteSelected);
+
+$("#backToHomeBtn")?.addEventListener("click", () => {
+  if (state.generating) {
+    state.controller?.abort();
+    return;
+  }
+
+  if (state.html && !window.confirm(
+    "Return home? Your current editor state will be lost."
+  )) return;
+
+  showLanding();
+});
+
+$("#closeInspectorBtn")?.addEventListener("click", () => {
+  inspector?.classList.remove("mobile-open");
+  preview.contentWindow?.postMessage(
+    { type: "SAMBHAV_CLEAR" }, "*"
+  );
+});
+
+$("#mobileInspectorOpen")?.addEventListener("click", () => {
+  if (!state.selectedSelector) {
+    showToast("Select an element first.");
+    return;
+  }
+
+  inspector?.classList.add("mobile-open");
+});
+
+$$("[data-add]").forEach(button => {
+  button.addEventListener("click", () => addElement(button.dataset.add));
+});
+
+$$(".device-button").forEach(button => {
+  button.addEventListener("click", () => setDevice(button.dataset.device));
+});
+
+$$(".sidebar-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    const panel = tab.dataset.panel;
+
+    $$(".sidebar-tab").forEach(item =>
+      item.classList.toggle("active", item === tab)
+    );
+
+    $("#elementsPanel")?.classList.toggle("hidden", panel !== "elements");
+    $("#layersPanel")?.classList.toggle("hidden", panel !== "layers");
+  });
+});
+
+preview?.addEventListener("load", () => {
+  setTimeout(renderLayers, 100);
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    inspector?.classList.remove("mobile-open");
+
+    if (state.previewMode) exitPreview();
+  }
+});
+
+/* ------------------ Initialize ------------------ */
+
+function initialize() {
+  showLanding();
+  updateHistoryButtons();
+  setDevice("desktop");
+
+  if (promptInput) promptInput.focus();
+}
+
+initialize();
