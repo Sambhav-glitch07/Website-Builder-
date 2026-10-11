@@ -1,553 +1,1077 @@
-"use strict";
+const API_URL = "https://website-builder-backend-nu.vercel.app/api/generate";
 
-/*
-  SAMBHAV AI WEBSITE BUILDER
+document.addEventListener("DOMContentLoaded", () => {
+const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
-  Configure BACKEND_URL to your existing backend.
-  The expected endpoint is POST /api/generate.
-
-  Suggested request:
-  { "prompt": "Build a portfolio website" }
-
-  Suggested response:
-  {
-    "html": "<main>...</main>",
-    "css": "body { ... }",
-    "js": "console.log('Website ready');"
-  }
-
-  Do not put private AI API keys in this file.
-*/
-
-const BACKEND_URL ="https://website-builder-backend-nu.vercel.app/api/generate";
-
-// Initial editable example project
-const starterFiles = {
-  html: `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My First Website</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <nav class="nav">
-    <a class="logo" href="#">NOVA<span>.</span></a>
-    <a class="nav-link" href="#about">About</a>
-  </nav>
-
-  <main class="hero">
-    <p class="eyebrow">YOUR NEXT BIG IDEA</p>
-    <h1>Build beyond<br><span>the ordinary.</span></h1>
-    <p class="description">
-      A beautiful website starts with an idea.
-      Use Sambhav AI Studio to bring yours to life.
-    </p>
-    <a class="cta" href="#about">Explore more ↗</a>
-  </main>
-
-  <section class="about" id="about">
-    <h2>Made for your ideas.</h2>
-    <p>Edit the HTML, CSS and JavaScript in the editor to customise this page.</p>
-  </section>
-
-  <script src="script.js"><\/script>
-</body>
-</html>`,
-
-  css: `* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #090711;
-  color: #ffffff;
-}
-
-.nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px 8%;
-  border-bottom: 1px solid #29233c;
-}
-
-.logo {
-  color: white;
-  font-size: 22px;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.logo span,
-.hero h1 span {
-  color: #bd78ff;
-}
-
-.nav-link {
-  color: #d3c8e7;
-  text-decoration: none;
-}
-
-.hero {
-  padding: 110px 8%;
-  background: radial-gradient(ellipse at 80% 20%, #41215b, transparent 50%);
-}
-
-.eyebrow {
-  color: #d18aff;
-  font-size: 12px;
-  letter-spacing: 3px;
-}
-
-.hero h1 {
-  font-size: clamp(42px, 7vw, 82px);
-  line-height: 1.05;
-  margin: 20px 0;
-}
-
-.description,
-.about p {
-  color: #aaa2bb;
-  line-height: 1.8;
-  max-width: 540px;
-}
-
-.cta {
-  display: inline-block;
-  margin-top: 22px;
-  padding: 14px 20px;
-  border-radius: 8px;
-  background: linear-gradient(100deg, #8438ed, #d13b9d);
-  color: white;
-  text-decoration: none;
-}
-
-.about {
-  padding: 55px 8%;
-  background: #100e1b;
-}
-
-.about h2 {
-  font-size: 28px;
-}`,
-
-  js: `// Your website JavaScript
-console.log("Website loaded successfully");
-
-// Example interactive button:
-document.querySelectorAll(".cta").forEach((button) => {
-  button.addEventListener("click", () => {
-    console.log("Explore button clicked");
-  });
-});`
+const el = {
+landing: $("#landingScreen"),
+generation: $("#generationScreen"),
+builder: $("#builderScreen"),
+prompt: $("#promptInput"),
+generate: $("#generateBtn"),
+preview: $("#websitePreview"),
+frame: $("#deviceFrame"),
+empty: $("#canvasEmpty"),
+canvas: $("#canvasArea"),
+inspector: $("#inspector"),
+inspectorContent: $("#inspectorContent"),
+selectedType: $("#selectedType"),
+toast: $("#toast"),
+toastText: $("#toastText"),
+projectName: $("#projectNameBtn"),
+progress: $("#generationProgress"),
+progressText: $("#progressText"),
+title: $("#generationTitle"),
+subtitle: $("#generationSubtitle"),
+stage: $("#generationStage"),
+timer: $("#generationTimer")
 };
 
-const state = {
-  activeFile: "html",
-  files: { ...starterFiles },
-  savedFiles: { ...starterFiles },
-  busy: false,
-  toastTimer: null
-};
-
-const $ = (selector) => document.querySelector(selector);
-
-const codeEditor = $("#codeEditor");
-const lineNumbers = $("#lineNumbers");
-const promptInput = $("#promptInput");
-const generateBtn = $("#generateBtn");
-const previewFrame = $("#previewFrame");
-const previewCanvas = $("#previewCanvas");
-const connectionStatus = $("#connectionStatus");
-const previewStatus = $("#previewStatus");
-const footerMessage = $("#footerMessage");
-const fileStatus = $("#fileStatus");
-const lineCount = $("#lineCount");
-const promptCount = $("#promptCount");
-const toast = $("#toast");
-
-function showToast(message) {
-  toast.textContent = message;
-  toast.classList.add("show");
-
-  clearTimeout(state.toastTimer);
-  state.toastTimer = setTimeout(() => {
-    toast.classList.remove("show");
-  }, 3200);
+let projectName = "Untitled Website";
+let currentHTML = "";
+let selected = null;
+let history = [];
+let historyIndex = -1;
+let busy = false;
+let generationStarted = 0;
+let timerInterval = null;
+let frameReady = false;
+let editorToken = "";
+let snapshotPending = false;
+let toastTimeout = null;
+let exportTimeout = null;
+const editorStyle = `[data-sambhav-selected="true"] {
+outline: 2px solid #9b7cff !important;
+outline-offset: 3px !important;
+cursor: pointer !important;
 }
 
-function setStatus(message) {
-  connectionStatus.textContent = message;
+[data-sambhav-selected="true"]:focus {
+outline: 2px solid #9b7cff !important;
+}`;
+function toast(message) {
+if (!el.toast || !el.toastText) {
+console.log(message);
+return;
 }
 
-function setFooter(message) {
-  footerMessage.textContent = message;
+el.toastText.textContent = message;
+el.toast.classList.add("show");
+
+clearTimeout(toastTimeout);
+toastTimeout = setTimeout(() => {
+  el.toast.classList.remove("show");
+}, 2800);
+
 }
 
-function updateLineNumbers() {
-  const total = Math.max(1, codeEditor.value.split("\n").length);
+function screen(which) {
+[el.landing, el.generation, el.builder].forEach(node => {
+if (node) node.hidden = true;
+});
 
-  lineNumbers.textContent = Array.from(
-    { length: total },
-    (_, index) => index + 1
-  ).join("\n");
+if (which) which.hidden = false;
 
-  lineCount.textContent = total;
 }
 
-function openFile(fileName) {
-  state.activeFile = fileName;
-  codeEditor.value = state.files[fileName];
+function setProgress(value) {
+const amount = Math.max(0, Math.min(100, value));
 
-  document.querySelectorAll(".file-tab").forEach((tab) => {
-    tab.classList.toggle("active", tab.dataset.file === fileName);
-  });
+if (el.progress) el.progress.style.width = amount + "%";
+if (el.progressText) el.progressText.textContent = amount + "%";
 
-  fileStatus.textContent = {
-    html: "index.html",
-    css: "style.css",
-    js: "script.js"
-  }[fileName];
+$("#generationProgressBar")?.setAttribute(
+  "aria-valuenow",
+  String(amount)
+);
 
-  updateLineNumbers();
 }
 
-function saveCurrentEditor() {
-  state.files[state.activeFile] = codeEditor.value;
+function setBusy(value) {
+busy = value;
+
+if (el.generate) {
+  el.generate.disabled = value;
+  el.generate.setAttribute("aria-busy", String(value));
 }
 
-function buildDocument() {
-  const html = state.files.html || "";
-  const css = state.files.css || "";
-  const js = state.files.js || "";
-
-  // Embed CSS and JS for a portable, single-file preview.
-  const safeCss = css.replace(/<\/style/gi, "<\\/style");
-  const safeJs = js.replace(/<\/script/gi, "<\\/script");
-
-  let documentHtml = html;
-
-  if (/<\/head\s*>/i.test(documentHtml)) {
-    documentHtml = documentHtml.replace(
-      /<\/head\s*>/i,
-      `<style>${safeCss}</style></head>`
-    );
-  } else {
-    documentHtml = `<style>${safeCss}</style>\n${documentHtml}`;
-  }
-
-  if (/<\/body\s*>/i.test(documentHtml)) {
-    documentHtml = documentHtml.replace(
-      /<\/body\s*>/i,
-      `<script>${safeJs}<\/script></body>`
-    );
-  } else {
-    documentHtml += `\n<script>${safeJs}<\/script>`;
-  }
-
-  return documentHtml;
 }
 
-function renderPreview() {
-  saveCurrentEditor();
+function setProjectName(name) {
+projectName = (name || "").trim().slice(0, 100) || "Untitled Website";
 
-  previewFrame.srcdoc = buildDocument();
-  previewStatus.textContent = "Updated";
-  setFooter("Preview updated successfully.");
+if (el.projectName) {
+  el.projectName.replaceChildren();
+  el.projectName.append(document.createTextNode(projectName + " "));
+
+  const arrow = document.createElement("span");
+  arrow.textContent = "⌄";
+  el.projectName.append(arrow);
 }
 
-function selectView(view) {
-  document.querySelectorAll(".side-item").forEach((item) => {
-    item.classList.toggle("active", item.dataset.view === view);
-  });
-
-  if (view === "editor") {
-    $("#workspace").scrollIntoView({ behavior: "smooth", block: "start" });
-    codeEditor.focus();
-  } else if (view === "preview") {
-    $("#previewPanel").scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
-  } else {
-    $("#builderView").scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
-    promptInput.focus();
-  }
 }
 
-function normaliseGeneratedFiles(data) {
-  // Support common API response formats.
-  const result = data?.files || data?.website || data?.result || data;
+function safeFilename(name) {
+return (name || "website")
+.replace(/[<>:"/\|?*\x00-\x1F]/g, "")
+.trim()
+.replace(/\s+/g, "-")
+.replace(/-+/g, "-")
+.slice(0, 80) || "website";
+}
 
-  let html = result?.html ?? result?.["index.html"];
-  let css = result?.css ?? result?.["style.css"];
-  let js = result?.js ?? result?.javascript ?? result?.["script.js"];
+function hexColor(value) {
+if (!value) return "#000000";
+if (/^#[0-9a-f]{6}$/i.test(value)) return value;
 
-  // Some backends return generated files inside a nested object.
-  if (typeof result?.code === "object" && result.code !== null) {
-    html ??= result.code.html ?? result.code["index.html"];
-    css ??= result.code.css ?? result.code["style.css"];
-    js ??= result.code.js ?? result.code["script.js"];
-  }
+const match = value.match(
+  /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i
+);
 
-  // Support a single HTML string returned by the backend.
-  if (!html && typeof result?.code === "string") {
-    html = result.code;
-  }
+if (!match) return "#000000";
 
-  if (!html && typeof result?.content === "string") {
-    html = result.content;
-  }
+return "#" + match.slice(1, 4)
+  .map(n => Number(n).toString(16).padStart(2, "0"))
+  .join("");
 
-  // Strip Markdown fences when the backend returns code blocks.
-  const clean = (value) => {
-    if (typeof value !== "string") return null;
+}
 
-    return value
-      .replace(/^```(?:html|css|javascript|js)?\s*/i, "")
-      .replace(/\s*```$/, "");
+function injectEditor(html) {
+editorToken =
+window.crypto?.randomUUID?.() ||
+Math.random().toString(36).slice(2) + Date.now();
+
+const editorScript = `
+
+<script data-sambhav-editor>
+(() => {
+  const token = ${JSON.stringify(editorToken)};
+
+  const send = (type, data = {}) => {
+    parent.postMessage({
+      source: "sambhav-editor",
+      token,
+      type,
+      ...data
+    }, "*");
   };
 
-  html = clean(html);
-  css = clean(css);
-  js = clean(js);
+  const style = document.createElement("style");
+  style.dataset.sambhavEditor = "true";
+  style.textContent = ${JSON.stringify(editorStyle)};
+  document.head.appendChild(style);
 
-  if (!html && !css && !js) {
-    throw new Error(
-      "The backend response did not contain HTML, CSS or JavaScript. Check its response format."
-    );
+  let current = null;
+  let layerCounter = 0;
+
+  function selectElement(node) {
+    if (
+      !node ||
+      node === document.body ||
+      node === document.documentElement ||
+      node.closest("[data-sambhav-editor]")
+    ) return;
+
+    current?.removeAttribute("data-sambhav-selected");
+    current = node;
+    current.setAttribute("data-sambhav-selected", "true");
+
+    const css = getComputedStyle(node);
+
+    send("selected", {
+      tag: node.tagName.toLowerCase(),
+      text: node.innerText || node.alt || "",
+      color: css.color,
+      background: css.backgroundColor,
+      fontSize: parseFloat(css.fontSize) || 16,
+      fontWeight: css.fontWeight || "400",
+      padding: parseFloat(css.paddingTop) || 0,
+      radius: parseFloat(css.borderRadius) || 0,
+      shadow: css.boxShadow !== "none",
+      isImage: node.tagName === "IMG",
+      src: node.tagName === "IMG" ? node.getAttribute("src") || "" : ""
+    });
   }
 
-  return {
-    html: html ?? state.files.html,
-    css: css ?? state.files.css,
-    js: js ?? state.files.js
-  };
+  document.addEventListener("click", event => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (target.closest("[data-sambhav-editor]")) return;
+
+    const node = target.closest(
+      "h1,h2,h3,h4,h5,h6,p,span,a,button,li,small,strong,em," +
+      "blockquote,img,figure,article,section,div"
+    );
+
+    if (!node || node === document.body) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    selectElement(node);
+  }, true);
+
+  window.addEventListener("message", event => {
+    const msg = event.data;
+
+    if (
+      !msg ||
+      msg.source !== "sambhav-parent" ||
+      msg.token !== token
+    ) return;
+
+    if (msg.type === "select") {
+      try {
+        selectElement(document.querySelector(msg.selector));
+      } catch (error) {
+        console.warn("Invalid layer selector", error);
+      }
+      return;
+    }
+
+    if (msg.type === "edit" && current) {
+      const value = msg.value;
+
+      switch (msg.property) {
+        case "text":
+          if (current.tagName === "IMG") {
+            current.alt = String(value);
+          } else {
+            current.textContent = String(value);
+          }
+          break;
+
+        case "color":
+          current.style.setProperty("color", value);
+          break;
+
+        case "background":
+          current.style.setProperty("background-color", value);
+          break;
+
+        case "fontSize":
+          current.style.setProperty("font-size", Number(value) + "px");
+          break;
+
+        case "fontWeight":
+          current.style.setProperty("font-weight", String(value));
+          break;
+
+        case "padding":
+          current.style.setProperty("padding", Number(value) + "px");
+          break;
+
+        case "radius":
+          current.style.setProperty("border-radius", Number(value) + "px");
+          break;
+
+        case "shadow":
+          current.style.setProperty(
+            "box-shadow",
+            value ? "0 8px 28px rgba(0,0,0,.22)" : "none"
+          );
+          break;
+
+        case "image":
+          if (current.tagName === "IMG") {
+            current.setAttribute("src", String(value));
+          }
+          break;
+
+        case "delete":
+          current.remove();
+          current = null;
+          send("deselected");
+          send("changed");
+          return;
+
+        case "reset":
+          current.removeAttribute("style");
+          break;
+      }
+
+      selectElement(current);
+      send("changed");
+      return;
+    }
+
+    if (msg.type === "add") {
+      const node = document.createElement(
+        msg.kind === "button" ? "a" :
+        msg.kind === "image" ? "img" :
+        msg.kind === "section" ? "section" :
+        msg.kind === "card" ? "article" :
+        "h2"
+      );
+
+      node.dataset.sambhavAdded = "true";
+      node.style.cssText = "box-sizing:border-box;margin:20px;padding:20px;";
+
+      if (msg.kind === "button") {
+        node.textContent = "Your call to action";
+        node.href = "#";
+        node.style.cssText +=
+          "display:inline-block;background:#7957ff;color:white;" +
+          "padding:12px 20px;border-radius:10px;text-decoration:none;";
+      } else if (msg.kind === "image") {
+        node.src = "https://placehold.co/800x500?text=Your+Image";
+        node.alt = "Your image";
+        node.style.cssText +=
+          "display:block;width:100%;max-width:600px;height:auto;";
+      } else if (msg.kind === "card") {
+        const heading = document.createElement("h2");
+        heading.textContent = "New card";
+
+        const paragraph = document.createElement("p");
+        paragraph.textContent = "Add your content here.";
+
+        node.append(heading, paragraph);
+        node.style.cssText += "border:1px solid #ddd;border-radius:16px;";
+      } else if (msg.kind === "section") {
+        const heading = document.createElement("h2");
+        heading.textContent = "New section";
+
+        const paragraph = document.createElement("p");
+        paragraph.textContent = "Write something here.";
+
+        node.append(heading, paragraph);
+      } else {
+        node.textContent = "Your new heading";
+      }
+
+      document.body.appendChild(node);
+      selectElement(node);
+      send("changed");
+      return;
+    }
+
+    if (msg.type === "duplicate" && current) {
+      const copy = current.cloneNode(true);
+      copy.removeAttribute("data-sambhav-selected");
+      copy.removeAttribute("data-sambhav-layer-id");
+      copy.removeAttribute("id");
+
+      current.after(copy);
+      selectElement(copy);
+      send("changed");
+      return;
+    }
+
+    if (msg.type === "layers") {
+      const selector = [
+        "h1", "h2", "h3", "h4", "h5", "h6", "p",
+        "button", "a", "img", "section", "article"
+      ].join(",");
+
+      const items = [...document.body.querySelectorAll(selector)]
+        .filter(node => !node.closest("[data-sambhav-editor]"));
+
+      send("layers", {
+        items: items.slice(0, 150).map(node => {
+          if (!node.dataset.sambhavLayerId) {
+            node.dataset.sambhavLayerId = "layer-" + (++layerCounter);
+          }
+
+          return {
+            selector: '[data-sambhav-layer-id="' +
+              node.dataset.sambhavLayerId + '"]',
+            tag: node.tagName.toLowerCase(),
+            text: (node.innerText || node.alt || "").trim().slice(0, 70)
+          };
+        })
+      });
+      return;
+    }
+
+    if (msg.type === "export") {
+      const clone = document.documentElement.cloneNode(true);
+
+      clone.querySelectorAll(
+        "script[data-sambhav-editor],style[data-sambhav-editor]"
+      ).forEach(node => node.remove());
+
+      clone.querySelectorAll(
+        "[data-sambhav-selected],[data-sambhav-layer-id]"
+      ).forEach(node => {
+        node.removeAttribute("data-sambhav-selected");
+        node.removeAttribute("data-sambhav-layer-id");
+      });
+
+      send("exported", {
+        html: "<!DOCTYPE html>\\n" + clone.outerHTML
+      });
+    }
+  });
+
+  send("ready");
+})();
+<\\/script>`;
+
+    const editorCSS = `
+<style data-sambhav-editor>
+${editorStyle}
+</style>`;let output = String(html);
+
+if (/<\/head\s*>/i.test(output)) {
+  output = output.replace(/<\/head\s*>/i, editorCSS + "</head>");
+} else {
+  output = editorCSS + output;
 }
 
-async function generateWebsite() {
-  const prompt = promptInput.value.trim();
+if (/<\/body\s*>/i.test(output)) {
+  output = output.replace(/<\/body\s*>/i, editorScript + "</body>");
+} else {
+  output += editorScript;
+}
 
-  if (!prompt) {
-    showToast("Enter a website idea first.");
-    promptInput.focus();
-    return;
-  }
+return output;
 
-  if (state.busy) return;
+}
 
-  saveCurrentEditor();
-  state.busy = true;
-  generateBtn.disabled = true;
-  generateBtn.textContent = "Generating...";
-  setStatus("Connecting to backend...");
-  setFooter("Waiting for your backend to generate the website.");
+function sendToFrame(type, payload = {}) {
+if (!el.preview?.contentWindow || !editorToken) return;
 
-  try {
-    const response = await fetch(BACKEND_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify({ prompt })
-    });
+el.preview.contentWindow.postMessage({
+  source: "sambhav-parent",
+  token: editorToken,
+  type,
+  ...payload
+}, "*");
 
-    const raw = await response.text();
+}
 
-    let data;
+function remember(html) {
+if (typeof html !== "string" || !html.trim()) return;
+
+if (history[historyIndex] === html) {
+  updateHistoryButtons();
+  return;
+}
+
+history = history.slice(0, historyIndex + 1);
+history.push(html);
+
+if (history.length > 40) history.shift();
+
+historyIndex = history.length - 1;
+updateHistoryButtons();
+
+}
+
+function updateHistoryButtons() {
+const undo = $("#undoBtn");
+const redo = $("#redoBtn");
+
+if (undo) undo.disabled = historyIndex <= 0;
+if (redo) {
+  redo.disabled = historyIndex < 0 || historyIndex >= history.length - 1;
+}
+
+}
+
+function loadHTML(html, addHistory = true) {
+if (typeof html !== "string" || !html.trim()) {
+toast("No website HTML is available to load.");
+return;
+}
+
+currentHTML = html;
+selected = null;
+frameReady = false;
+snapshotPending = false;
+
+if (el.inspectorContent) {
+  el.inspectorContent.innerHTML = `
+    <div class="inspector-empty">
+      <div class="empty-select-icon">⌁</div>
+      <strong>Select an element</strong>
+      <p>Click an element in the preview to edit it.</p>
+    </div>`;
+}
+
+if (el.selectedType) {
+  el.selectedType.textContent = "Nothing selected";
+}
+
+if (el.preview) el.preview.srcdoc = injectEditor(html);
+
+if (el.frame) {
+  el.frame.hidden = false;
+  el.frame.style.display = "block";
+}
+
+if (el.empty) el.empty.hidden = true;
+
+if (addHistory) remember(html);
+
+}
+
+function goHistory(index) {
+if (index < 0 || index >= history.length) return;
+
+historyIndex = index;
+updateHistoryButtons();
+loadHTML(history[index], false);
+
+}
+
+function updateSelection(data) {
+selected = data;
+
+if (el.selectedType) {
+  el.selectedType.textContent =
+    data.tag.toUpperCase() + (data.isImage ? " · IMAGE" : "");
+}
+
+if (!el.inspectorContent) return;
+
+const template = $("#inspectorTemplate");
+
+if (template) {
+  el.inspectorContent.replaceChildren(template.content.cloneNode(true));
+}
+
+if (data.isImage) {
+  const section = document.createElement("div");
+  section.className = "inspector-section";
+  section.innerHTML = `
+    <div class="section-title">IMAGE <span>06</span></div>
+    <label class="field-label" for="imageUrlInput">Image URL</label>
+    <input
+      id="imageUrlInput"
+      class="field-input"
+      type="url"
+      placeholder="https://example.com/photo.jpg"
+    >
+    <button id="applyImageUrlBtn" class="secondary-button" type="button">
+      Apply image URL
+    </button>
+  `;
+
+  el.inspectorContent.prepend(section);
+  $("#imageUrlInput").value = data.src || "";
+
+  $("#applyImageUrlBtn").addEventListener("click", () => {
+    const value = $("#imageUrlInput").value.trim();
+
     try {
-      data = JSON.parse(raw);
+      const url = new URL(value);
+      if (!["http:", "https:"].includes(url.protocol)) {
+        throw new Error("Invalid protocol");
+      }
     } catch {
-      throw new Error(
-        `Backend returned non-JSON data (HTTP ${response.status}). Check the API route.`
-      );
+      toast("Enter a valid HTTP or HTTPS image URL.");
+      return;
     }
 
-    if (!response.ok) {
-      throw new Error(
-        data?.error || data?.message ||
-        `Backend request failed (HTTP ${response.status}).`
-      );
-    }
-
-    const generated = normaliseGeneratedFiles(data);
-
-    state.files = generated;
-    state.savedFiles = { ...generated };
-
-    openFile("html");
-    renderPreview();
-
-    setStatus("Backend connected");
-    showToast("Website generated successfully!");
-    setFooter("Generated files are ready to edit and download.");
-  } catch (error) {
-    console.error("Website generation error:", error);
-
-    setStatus("Backend connection failed");
-    setFooter(error.message || "Could not generate the website.");
-
-    showToast(error.message || "Could not connect to the backend.");
-  } finally {
-    state.busy = false;
-    generateBtn.disabled = false;
-    generateBtn.innerHTML = "<span>✦</span> Generate Website";
-  }
-}
-
-function downloadFile(fileName, content, type) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-
-  anchor.href = url;
-  anchor.download = fileName;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function downloadWebsite() {
-  saveCurrentEditor();
-
-  // Produce a single self-contained HTML file.
-  downloadFile(
-    "website.html",
-    buildDocument(),
-    "text/html;charset=utf-8"
-  );
-
-  showToast("Downloaded website.html");
-}
-
-function resetProject() {
-  if (!confirm("Reset all editor files to the starter website?")) {
-    return;
-  }
-
-  state.files = { ...starterFiles };
-  state.savedFiles = { ...starterFiles };
-
-  openFile("html");
-  renderPreview();
-
-  showToast("Project reset to starter files.");
-}
-
-function setDevice(device) {
-  previewCanvas.classList.remove(
-    "device-desktop",
-    "device-tablet",
-    "device-mobile"
-  );
-
-  previewCanvas.classList.add(`device-${device}`);
-
-  document.querySelectorAll(".device-btn").forEach((button) => {
-    button.classList.toggle("active", button.dataset.device === device);
+    edit("image", value);
   });
 }
 
-function openPreviewInNewTab() {
-  saveCurrentEditor();
+const textInput = $("#editText");
 
-  const blob = new Blob([buildDocument()], {
+if (textInput) {
+  textInput.value = data.text || "";
+  textInput.addEventListener("change", () => {
+    edit("text", textInput.value);
+  });
+}
+
+bindValue("#fontSizeInput", data.fontSize, value => edit("fontSize", value));
+bindValue("#fontWeightInput", data.fontWeight, value => edit("fontWeight", value));
+bindValue("#paddingInput", data.padding, value => edit("padding", value));
+bindValue("#radiusInput", data.radius, value => edit("radius", value));
+
+bindColor("#textColorInput", "#textColorText", data.color, "color");
+bindColor(
+  "#backgroundColorInput",
+  "#backgroundColorText",
+  data.background,
+  "background"
+);
+
+const shadow = $("#shadowInput");
+
+if (shadow) {
+  shadow.checked = !!data.shadow;
+  shadow.addEventListener("change", () => {
+    edit("shadow", shadow.checked);
+  });
+}
+
+$("#resetElementBtn")?.addEventListener("click", () => {
+  if (!confirm("Reset the selected element's inline styles?")) return;
+  edit("reset");
+});
+
+if ($("#mobileSelectionName")) {
+  $("#mobileSelectionName").textContent = data.tag;
+}
+
+buildLayers();
+
+}
+
+function bindValue(selector, initial, callback) {
+const input = $(selector);
+if (!input) return;
+
+input.value = initial;
+
+input.addEventListener("change", () => {
+  const value = Number(input.value);
+  if (!Number.isFinite(value)) return;
+
+  const min = input.min === "" ? 0 : Number(input.min);
+  const max = input.max === "" ? 1000 : Number(input.max);
+
+  callback(Math.max(min, Math.min(max, value)));
+});
+
+}
+
+function bindColor(pickerSelector, textSelector, initial, property) {
+const picker = $(pickerSelector);
+const text = $(textSelector);
+const color = hexColor(initial);
+
+if (picker) picker.value = color;
+if (text) text.value = color;
+
+picker?.addEventListener("input", () => {
+  if (text) text.value = picker.value;
+  edit(property, picker.value);
+});
+
+text?.addEventListener("change", () => {
+  if (!/^#[0-9a-f]{6}$/i.test(text.value)) {
+    toast("Enter a color like #ffffff.");
+    text.value = picker?.value || color;
+    return;
+  }
+
+  if (picker) picker.value = text.value;
+  edit(property, text.value);
+});
+
+}
+
+function edit(property, value) {
+if (!selected) {
+toast("Select an element in the preview first.");
+return;
+}
+
+snapshotPending = true;
+sendToFrame("edit", { property, value });
+
+}
+
+function buildLayers() {
+if (frameReady) sendToFrame("layers");
+}
+
+function addElement(kind) {
+if (!frameReady) {
+toast("Generate a website first.");
+return;
+}
+
+snapshotPending = true;
+sendToFrame("add", { kind });
+toast("Element added.");
+
+}
+
+function requestExport(openPreview = false) {
+if (!currentHTML) {
+toast("Generate a website before exporting.");
+return;
+}
+
+const handler = event => {
+  if (
+    event.source !== el.preview?.contentWindow ||
+    event.data?.source !== "sambhav-editor" ||
+    event.data?.token !== editorToken ||
+    event.data?.type !== "exported"
+  ) return;
+
+  window.removeEventListener("message", handler);
+  clearTimeout(exportTimeout);
+
+  const html = event.data.html;
+
+  if (typeof html !== "string" || !html.trim()) {
+    toast("Could not prepare the export.");
+    return;
+  }
+
+  currentHTML = html;
+
+  const blob = new Blob([html], {
     type: "text/html;charset=utf-8"
   });
 
   const url = URL.createObjectURL(blob);
-  const tab = window.open(url, "_blank", "noopener,noreferrer");
 
-  if (!tab) {
-    URL.revokeObjectURL(url);
-    showToast("Allow pop-ups to open the preview.");
+  if (openPreview) {
+    const tab = window.open(url, "_blank");
+
+    if (!tab) toast("Allow pop-ups to open the website preview.");
+
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } else {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = safeFilename(projectName) + ".html";
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast("Exported " + safeFilename(projectName) + ".html");
+  }
+};
+
+clearTimeout(exportTimeout);
+window.addEventListener("message", handler);
+sendToFrame("export");
+
+exportTimeout = setTimeout(() => {
+  window.removeEventListener("message", handler);
+  toast("Export timed out. Refresh the preview and try again.");
+}, 5000);
+
+}
+
+window.addEventListener("message", event => {
+if (
+event.source !== el.preview?.contentWindow ||
+event.data?.source !== "sambhav-editor" ||
+event.data?.token !== editorToken
+) return;
+
+const data = event.data;
+
+if (data.type === "ready") {
+  frameReady = true;
+  toast("Editor ready. Click an element to edit it.");
+  return;
+}
+
+if (data.type === "selected") {
+  updateSelection(data);
+  return;
+}
+
+if (data.type === "deselected") {
+  selected = null;
+  if (el.selectedType) el.selectedType.textContent = "Nothing selected";
+  return;
+}
+
+if (data.type === "changed") {
+  snapshotPending = true;
+  sendToFrame("export");
+  return;
+}
+
+if (data.type === "exported") {
+  if (typeof data.html !== "string" || !data.html.trim()) return;
+
+  currentHTML = data.html;
+
+  if (snapshotPending) {
+    remember(data.html);
+    snapshotPending = false;
+  }
+  return;
+}
+
+if (data.type === "layers") {
+  const list = $("#layersList");
+  if (!list) return;
+
+  list.replaceChildren();
+
+  if (!data.items?.length) {
+    list.textContent = "No editable layers found.";
     return;
   }
 
-  // Keep the blob URL available for the new tab.
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  data.items.forEach(item => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "layer-item";
+    button.textContent =
+      item.tag.toUpperCase() + " — " + (item.text || "Untitled");
+
+    button.addEventListener("click", () => {
+      sendToFrame("select", { selector: item.selector });
+    });
+
+    list.appendChild(button);
+  });
 }
 
-// File switching
-document.querySelectorAll(".file-tab").forEach((tab) => {
-  tab.addEventListener("click", () => {
-    saveCurrentEditor();
-    openFile(tab.dataset.file);
+});
+
+async function generateWebsite() {
+const promptText = el.prompt?.value.trim();
+
+if (!promptText) {
+  toast("Describe your website first.");
+  el.prompt?.focus();
+  return;
+}
+
+if (busy) return;
+
+setBusy(true);
+screen(el.generation);
+setProgress(5);
+
+if (el.title) el.title.textContent = "Creating your website...";
+if (el.subtitle) el.subtitle.textContent = "Connecting to Sambhav AI.";
+if (el.stage) el.stage.textContent = "PHASE 01 / DISCOVERY";
+
+generationStarted = Date.now();
+
+clearInterval(timerInterval);
+
+timerInterval = setInterval(() => {
+  if (el.timer) {
+    el.timer.textContent =
+      ((Date.now() - generationStarted) / 1000).toFixed(1) + "s";
+  }
+}, 100);
+
+try {
+  setProgress(20);
+
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt: promptText })
   });
-});
 
-// Navigation
-document.querySelectorAll(".side-item").forEach((item) => {
-  item.addEventListener("click", () => selectView(item.dataset.view));
-});
+  const data = await response.json().catch(() => ({}));
 
-// Prompt suggestions
-document.querySelectorAll(".suggestion").forEach((button) => {
-  button.addEventListener("click", () => {
-    promptInput.value = button.dataset.prompt;
-    promptCount.textContent = `${promptInput.value.length} characters`;
-    promptInput.focus();
-  });
-});
-
-promptInput.addEventListener("input", () => {
-  promptCount.textContent = `${promptInput.value.length} characters`;
-});
-
-// Editor changes update the local project.
-codeEditor.addEventListener("input", () => {
-  saveCurrentEditor();
-  updateLineNumbers();
-  previewStatus.textContent = "Changes pending";
-});
-
-codeEditor.addEventListener("keydown", (event) => {
-  // Support indentation with the Tab key.
-  if (event.key === "Tab") {
-    event.preventDefault();
-
-    const start = codeEditor.selectionStart;
-    const end = codeEditor.selectionEnd;
-    const value = codeEditor.value;
-
-    codeEditor.value =
-      value.slice(0, start) + "  " + value.slice(end);
-
-    codeEditor.selectionStart = codeEditor.selectionEnd = start + 2;
-
-    saveCurrentEditor();
-    updateLineNumbers();
+  if (!response.ok || data.success === false) {
+    throw new Error(
+      data.error || data.message || `Request failed (${response.status})`
+    );
   }
 
-  // Ctrl/Cmd + Enter runs the preview.
-  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-    event.preventDefault();
-    renderPreview();
+  const generatedHTML =
+    typeof data.html === "string" ? data.html :
+    typeof data.data?.html === "string" ? data.data.html :
+    typeof data.result?.html === "string" ? data.result.html :
+    typeof data.website === "string" ? data.website :
+    "";
+
+  if (!generatedHTML.trim()) {
+    throw new Error("The backend returned no website HTML.");
+  }
+
+  setProgress(75);
+
+  currentHTML = generatedHTML;
+  history = [];
+  historyIndex = -1;
+  snapshotPending = false;
+
+  setProjectName(
+    promptText.split(/\s+/).slice(0, 5).join(" ")
+      .replace(/[.,!?]+$/, "") || "My Website"
+  );
+
+  loadHTML(currentHTML);
+  screen(el.builder);
+  setProgress(100);
+  toast("Website generated!");
+
+} catch (error) {
+  console.error("Website generation failed:", error);
+  screen(el.landing);
+  toast(error.message || "Generation failed. Please try again.");
+} finally {
+  clearInterval(timerInterval);
+  setBusy(false);
+}
+
+}
+
+el.generate?.addEventListener("click", generateWebsite);
+
+el.prompt?.addEventListener("keydown", event => {
+if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+event.preventDefault();
+generateWebsite();
+}
+});
+
+$$(".example-chip").forEach(button => {
+button.addEventListener("click", () => {
+if (!el.prompt) return;
+el.prompt.value = button.dataset.prompt || "";
+el.prompt.focus();
+});
+});
+
+$("#emptyGenerateBtn")?.addEventListener("click", () => {
+screen(el.landing);
+el.prompt?.focus();
+});
+
+$("#cancelGenerationBtn")?.addEventListener("click", () => {
+clearInterval(timerInterval);
+setBusy(false);
+screen(el.landing);
+});
+
+$("#backToHomeBtn")?.addEventListener("click", () => {
+screen(el.landing);
+});
+
+$("#exportBtn")?.addEventListener("click", () => requestExport(false));
+$("#previewBtn")?.addEventListener("click", () => requestExport(true));
+
+$("#refreshBtn")?.addEventListener("click", () => {
+if (currentHTML) {
+loadHTML(currentHTML, false);
+toast("Preview refreshed.");
+}
+});
+
+$("#undoBtn")?.addEventListener("click", () => {
+if (historyIndex > 0) goHistory(historyIndex - 1);
+});
+
+$("#redoBtn")?.addEventListener("click", () => {
+if (historyIndex < history.length - 1) goHistory(historyIndex + 1);
+});
+
+$("#projectNameBtn")?.addEventListener("click", () => {
+const next = window.prompt("Name your website:", projectName);
+if (next?.trim()) setProjectName(next);
+});
+
+$$("[data-add]").forEach(button => {
+button.addEventListener("click", () => addElement(button.dataset.add));
+});
+
+const elementGrid = $(".element-grid");
+
+if (elementGrid && !$('[data-add="image"]')) {
+const imageButton = document.createElement("button");
+imageButton.type = "button";
+imageButton.className = "element-card";
+imageButton.dataset.add = "image";
+imageButton.innerHTML =
+'<span class="element-icon">▧</span><strong>Image</strong><small>Add a photo</small>';
+
+imageButton.addEventListener("click", () => addElement("image"));
+elementGrid.appendChild(imageButton);
+
+}
+
+$("#duplicateBtn")?.addEventListener("click", () => {
+if (!selected) return toast("Select an element first.");
+
+snapshotPending = true;
+sendToFrame("duplicate");
+toast("Element duplicated.");
+
+});
+
+$("#deleteBtn")?.addEventListener("click", () => {
+if (!selected) return toast("Select an element first.");
+if (!confirm("Delete this element?")) return;
+
+snapshotPending = true;
+sendToFrame("edit", { property: "delete" });
+selected = null;
+toast("Element deleted.");
+
+});
+
+$("#closeInspectorBtn")?.addEventListener("click", () => {
+el.inspector?.classList.toggle("closed");
+});
+
+$("#mobileInspectorOpen")?.addEventListener("click", () => {
+el.inspector?.classList.remove("closed");
+el.inspector?.scrollIntoView({
+behavior: "smooth",
+block: "nearest"
+});
+});
+
+$$(".sidebar-tab").forEach(button => {
+button.addEventListener("click", () => {
+$$(".sidebar-tab").forEach(tab => {
+tab.classList.toggle("active", tab === button);
+tab.setAttribute("aria-selected", String(tab === button));
+});
+
+  const showElements = button.dataset.panel === "elements";
+  const elementsPanel = $("#elementsPanel");
+  const layersPanel = $("#layersPanel");
+
+  if (elementsPanel) {
+    elementsPanel.hidden = !showElements;
+    elementsPanel.classList.toggle("hidden", !showElements);
+  }
+
+  if (layersPanel) {
+    layersPanel.hidden = showElements;
+    layersPanel.classList.toggle("hidden", showElements);
+  }
+
+  if (!showElements) buildLayers();
+});
+
+});
+
+const deviceWidths = {
+desktop: "100%",
+tablet: "768px",
+mobile: "390px"
+};
+
+$$(".device-button").forEach(button => {
+button.addEventListener("click", () => {
+const device = button.dataset.device;
+
+  $$(".device-button").forEach(item => {
+    item.classList.toggle("active", item === button);
+  });
+
+  if (el.frame) {
+    el.frame.className = "device-frame " + device;
+    el.frame.style.width = deviceWidths[device] || "100%";
+    el.frame.style.maxWidth = "100%";
+  }
+
+  const labels = {
+    desktop: "Desktop · Responsive",
+    tablet: "Tablet · Responsive",
+    mobile: "Mobile · Responsive"
+  };
+
+  const sizeLabel = $("#canvasSizeLabel");
+  if (sizeLabel) {
+    sizeLabel.textContent = labels[device] || "Responsive";
   }
 });
 
-$("#generateBtn").addEventListener("click", generateWebsite);
-$("#runBtn").addEventListener("click", renderPreview);
-$("#refreshBtn").addEventListener("click", renderPreview);
-$("#downloadBtn").addEventListener("click", downloadWebsite);
-$("#resetBtn").addEventListener("click", resetProject);
-$("#openPreviewBtn").addEventListener("click", openPreviewInNewTab);
-
-document.querySelectorAll(".device-btn").forEach((button) => {
-  button.addEventListener("click", () => setDevice(button.dataset.device));
 });
 
-// Initial project preview.
-openFile("html");
-renderPreview();
-setStatus("Builder ready");
+screen(el.landing);
+setProgress(0);
+setProjectName("Untitled Website");
+updateHistoryButtons();
+});
