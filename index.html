@@ -2,600 +2,182 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#090713">
-  <meta name="description" content="Sambhav AI turns your ideas into beautiful, responsive websites.">
-  <title>Sambhav AI — Dream it. Build it.</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800;900&display=swap"
-    rel="stylesheet"
-  >
-
-  <link rel="stylesheet" href="./style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#090711">
+  <title>Sambhav AI — Website Builder</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
 </head>
-
 <body>
-  <!-- LANDING SCREEN -->
-  <section id="landingScreen" class="screen landing-screen">
-    <div class="space-bg" aria-hidden="true">
-      <div class="aurora aurora-a"></div>
-      <div class="aurora aurora-b"></div>
-      <div class="aurora aurora-c"></div>
-      <div class="starfield"></div>
+  <header class="topbar">
+    <a class="brand" href="#">
+      <span class="brand-icon">S</span>
+      <span>SAMBHAV<span class="accent"> AI</span>
+        <small>WEBSITE STUDIO</small>
+      </span>
+    </a>
 
-      <div class="shooting-star shooting-one"></div>
-      <div class="shooting-star shooting-two"></div>
-      <div class="shooting-star shooting-three"></div>
-
-      <div class="moon">
-        <span class="moon-eye eye-left"></span>
-        <span class="moon-eye eye-right"></span>
-        <span class="moon-smile"></span>
-        <i class="crater crater-one"></i>
-        <i class="crater crater-two"></i>
-      </div>
+    <div class="connection">
+      <span class="status-dot"></span>
+      <span id="connectionStatus">Builder ready</span>
     </div>
 
-    <header class="landing-nav glass">
-      <a class="brand" href="#" aria-label="Sambhav AI home">
-        <span class="brand-mark" aria-hidden="true">
-          <i></i><i></i><i></i>
-        </span>
-        <span class="brand-name">Sambhav<span>ai</span></span>
-      </a>
+    <div class="top-actions">
+      <button class="button secondary" id="resetBtn">Reset</button>
+      <button class="button primary" id="downloadBtn">Download HTML</button>
+    </div>
+  </header>
 
-      <div class="nav-pill">
-        <span class="live-dot"></span>
-        YOUR IDEAS, IN ORBIT
-      </div>
+  <main class="app">
+    <aside class="sidebar">
+      <div class="side-heading">WORKSPACE</div>
 
-      <div class="nav-right">
-        <span class="status-label">ALL SYSTEMS GO</span>
-        <span class="status-dot"></span>
-      </div>
-    </header>
+      <button class="side-item active" data-view="builder">
+        <span>✦</span> AI Builder
+      </button>
 
-    <main class="landing-main">
-      <section class="hero-copy">
-        <div class="eyebrow">
-          <span class="eyebrow-line"></span>
-          THE UNIVERSE IS YOUR CANVAS
-          <span class="eyebrow-line"></span>
+      <button class="side-item" data-view="editor">
+        <span>⌘</span> Code Editor
+      </button>
+
+      <button class="side-item" data-view="preview">
+        <span>▣</span> Live Preview
+      </button>
+
+      <div class="side-heading section-gap">PROJECT</div>
+
+      <div class="project-info">
+        <div class="file-icon">◈</div>
+        <div>
+          <strong>My Website</strong>
+          <small>HTML · CSS · JavaScript</small>
         </div>
+      </div>
 
-        <h1>
-          Dream it.<br>
-          <span class="gradient-text">Build beyond.</span>
-        </h1>
+      <div class="sidebar-bottom">
+        <div class="avatar">SA</div>
+        <div>
+          <strong>Sambhav AI</strong>
+          <small>Creative workspace</small>
+        </div>
+      </div>
+    </aside>
 
-        <p class="hero-description">
-          From a tiny spark to a whole digital universe. Describe your
-          website, let Sambhav bring it to life, then make every detail yours.
-        </p>
+    <section class="main-area">
+      <div class="page-heading">
+        <div>
+          <div class="eyebrow">YOUR CREATIVE WORKSPACE</div>
+          <h1>Build something <span>amazing.</span></h1>
+          <p>Describe your idea, generate a website and edit it live.</p>
+        </div>
+        <div class="live-badge">
+          <span class="status-dot"></span> Live editor
+        </div>
+      </div>
 
-        <div class="prompt-shell glass">
-          <label for="promptInput" class="prompt-label">
-            <span class="prompt-spark" aria-hidden="true">
-              <svg class="ui-icon ui-icon-sparkle" viewBox="0 0 24 24">
-                <path d="m12 2 2.3 7.7L22 12l-7.7 2.3L12 22l-2.3-7.7L2 12l7.7-2.3L12 2Z"/>
-              </svg>
-            </span>
-            YOUR NEXT BIG IDEA
-          </label>
-
-          <textarea
-            id="promptInput"
-            maxlength="12000"
-            rows="4"
-            placeholder="A dreamy portfolio for a 3D artist, with a violet sky and floating project cards…"
-            spellcheck="true"
-            aria-describedby="promptHint"
-          ></textarea>
-
-          <div class="prompt-bottom">
-            <span id="promptHint" class="prompt-hint">
-              <span class="kbd">ENTER</span>
-              Describe it in your own words
-            </span>
-
-            <button id="generateBtn" class="generate-button" type="button">
-              <span class="button-star" aria-hidden="true">
-                <svg class="ui-icon ui-icon-sparkle" viewBox="0 0 24 24">
-                  <path d="m12 2 2.3 7.7L22 12l-7.7 2.3L12 22l-2.3-7.7L2 12l7.7-2.3L12 2Z"/>
-                </svg>
-              </span>
-              <span>Generate website</span>
-              <span class="button-arrow" aria-hidden="true">
-                <svg class="ui-icon" viewBox="0 0 24 24">
-                  <path d="M7 17 17 7M8 7h9v9"/>
-                </svg>
-              </span>
-            </button>
+      <section class="prompt-panel" id="builderView">
+        <div class="prompt-title">
+          <div class="sparkle">✦</div>
+          <div>
+            <h2>What are we building today?</h2>
+            <p>Your idea becomes your next website.</p>
           </div>
         </div>
 
-        <div class="examples">
-          <div class="examples-label">
-            NEED A SPARK? <span>CHOOSE A LAUNCHPAD</span>
-          </div>
+        <label class="sr-only" for="promptInput">Describe your website</label>
+        <textarea id="promptInput"
+          placeholder="Create a premium car dealership website with a dark theme, blue accents, car cards, prices and a contact section..."
+          rows="4"></textarea>
 
-          <div class="example-list">
-            <button
-              type="button"
-              class="example-chip"
-              data-prompt="Create a premium dark fashion landing page for a futuristic clothing brand. Include a cinematic hero section, product cards, bold typography, smooth gradients and a strong call to action."
-            >
-              <span class="chip-mark" aria-hidden="true">✦</span>
-              Fashion brand
-              <b aria-hidden="true">↗</b>
-            </button>
+        <div class="prompt-footer">
+          <span id="promptCount">0 characters</span>
+          <button class="button primary generate-btn" id="generateBtn">
+            <span>✦</span> Generate Website
+          </button>
+        </div>
 
-            <button
-              type="button"
-              class="example-chip"
-              data-prompt="Create a modern SaaS landing page for an AI productivity application. Include a beautiful hero, feature cards, pricing section, testimonials and a strong CTA."
-            >
-              <span class="chip-mark" aria-hidden="true">✦</span>
-              SaaS landing
-              <b aria-hidden="true">↗</b>
-            </button>
-
-            <button
-              type="button"
-              class="example-chip"
-              data-prompt="Create a futuristic portfolio website for a creative developer. Use a dark premium aesthetic, animated-looking sections, project cards, skills and contact section."
-            >
-              <span class="chip-mark" aria-hidden="true">✦</span>
-              Developer portfolio
-              <b aria-hidden="true">↗</b>
-            </button>
-
-            <button
-              type="button"
-              class="example-chip"
-              data-prompt="Create a premium coffee brand website with a cinematic hero, product showcase, story section, menu cards and a beautiful footer."
-            >
-              <span class="chip-mark" aria-hidden="true">☕</span>
-              Coffee brand
-              <b aria-hidden="true">↗</b>
-            </button>
-          </div>
+        <div class="suggestion-label">TRY AN IDEA</div>
+        <div class="suggestions">
+          <button class="suggestion" data-prompt="Create a premium BMW M4 dealership website with a dark theme, blue highlights, car gallery, specifications and contact section.">🏎️ BMW showroom</button>
+          <button class="suggestion" data-prompt="Create a modern AI SaaS landing page with gradients, pricing cards, features and a responsive navigation bar.">✧ AI landing page</button>
+          <button class="suggestion" data-prompt="Create a modern online clothing store with product cards, prices, categories and a shopping cart interface.">◇ Online store</button>
+          <button class="suggestion" data-prompt="Create a personal portfolio with an animated hero, projects, about section and contact form.">▣ Portfolio</button>
         </div>
       </section>
 
-      <aside class="hero-visual" aria-label="Sambhav AI creative universe">
-        <div class="visual-orbit orbit-one"></div>
-        <div class="visual-orbit orbit-two"></div>
-        <div class="visual-orbit orbit-three"></div>
-        <div class="planet-glow"></div>
-
-        <div class="hero-planet">
-          <div class="planet-surface"></div>
-          <div class="planet-shine"></div>
+      <div class="workspace-heading">
+        <div>
+          <h2>Website workspace</h2>
+          <p>Edit your code and see the result instantly.</p>
         </div>
 
-        <div class="orbit-satellite satellite-one" aria-hidden="true">✦</div>
-        <div class="orbit-satellite satellite-two" aria-hidden="true">✦</div>
-
-        <div class="floating-card float-card-one glass">
-          <span class="mini-card-icon" aria-hidden="true">✦</span>
-          <span>
-            <small>DESIGN ENGINE</small>
-            <strong>Ideas into interface</strong>
-          </span>
-          <i class="card-live"></i>
-        </div>
-
-        <div class="floating-card float-card-two glass">
-          <span class="mini-card-icon violet" aria-hidden="true">▣</span>
-          <span>
-            <small>RESPONSIVE BY DESIGN</small>
-            <strong>Every screen, covered</strong>
-          </span>
-        </div>
-
-        <div class="floating-card float-card-three glass">
-          <span class="mini-card-icon pink" aria-hidden="true">⌘</span>
-          <span>
-            <small>YOUR CREATIVE CONTROL</small>
-            <strong>Edit every detail</strong>
-          </span>
-        </div>
-
-        <div class="visual-caption">
-          <span class="caption-line"></span>
-          <span>MAKE SOMETHING IMPOSSIBLE</span>
-        </div>
-      </aside>
-    </main>
-
-    <footer class="landing-footer">
-      <span>
-        <i class="footer-star" aria-hidden="true">✦</i>
-        SAMBHAV ENGINE
-        <span class="footer-muted">/ CREATIVE MODE</span>
-      </span>
-
-      <div>
-        <span>GENERATE</span><b>·</b>
-        <span>EDIT</span><b>·</b>
-        <span>EXPORT</span>
-      </div>
-
-      <span class="footer-right">
-        BUILT FOR WHAT'S NEXT <span aria-hidden="true">↗</span>
-      </span>
-    </footer>
-  </section>
-
-  <!-- GENERATION SCREEN -->
-  <section id="generationScreen" class="screen generation-screen" hidden>
-    <div class="generation-space" aria-hidden="true">
-      <div class="aurora aurora-a"></div>
-      <div class="aurora aurora-b"></div>
-      <div class="starfield"></div>
-      <canvas id="particleCanvas"></canvas>
-    </div>
-
-    <header class="generation-top">
-      <a class="brand" href="#" aria-label="Sambhav AI home">
-        <span class="brand-mark" aria-hidden="true">
-          <i></i><i></i><i></i>
-        </span>
-        <span class="brand-name">Sambhav<span>ai</span></span>
-      </a>
-
-      <span class="generation-status">
-        <i></i> BUILD IN PROGRESS
-      </span>
-    </header>
-
-    <main class="generation-center">
-      <div class="generation-orb" aria-hidden="true">
-        <div class="orb-ring ring-1"></div>
-        <div class="orb-ring ring-2"></div>
-        <div class="orb-ring ring-3"></div>
-        <div class="orb-core">✦</div>
-        <div class="orb-dot"></div>
-      </div>
-
-      <div class="generation-stage" id="generationStage">
-        PHASE 01 / DISCOVERY
-      </div>
-
-      <h2 id="generationTitle">Turning a spark into a universe.</h2>
-      <p id="generationSubtitle">
-        Reading your idea and shaping the experience…
-      </p>
-
-      <div
-        class="generation-progress"
-        role="progressbar"
-        aria-label="Website generation progress"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        aria-valuenow="0"
-        id="generationProgressBar"
-      >
-        <div class="progress-track">
-          <div id="generationProgress" class="progress-fill"></div>
-        </div>
-        <div class="progress-meta">
-          <span id="progressText">0%</span>
-          <span>CRAFTING YOUR WEBSITE</span>
+        <div class="device-actions">
+          <button class="device-btn active" data-device="desktop" title="Desktop preview">▰</button>
+          <button class="device-btn" data-device="tablet" title="Tablet preview">▤</button>
+          <button class="device-btn" data-device="mobile" title="Mobile preview">▯</button>
         </div>
       </div>
 
-      <div class="generation-steps">
-        <div class="generation-step active" data-step="0">
-          <span>01</span><b>Understand</b>
-        </div>
-        <div class="generation-step" data-step="1">
-          <span>02</span><b>Design</b>
-        </div>
-        <div class="generation-step" data-step="2">
-          <span>03</span><b>Build</b>
-        </div>
-        <div class="generation-step" data-step="3">
-          <span>04</span><b>Polish</b>
-        </div>
-      </div>
-
-      <button id="cancelGenerationBtn" class="text-button" type="button">
-        <span aria-hidden="true">←</span> Back to prompt
-      </button>
-    </main>
-
-    <footer class="generation-footer">
-      <span>POWERED BY SAMBHAV ENGINE</span>
-      <span id="generationTimer">00.0s</span>
-    </footer>
-  </section>
-
-  <!-- WEBSITE BUILDER -->
-  <main id="builderScreen" class="builder-screen" hidden>
-    <header class="builder-topbar">
-      <div class="builder-left">
-        <button
-          id="backToHomeBtn"
-          class="icon-button"
-          type="button"
-          title="Back to home"
-          aria-label="Back to home"
-        >←</button>
-
-        <a class="brand builder-brand" href="#" aria-label="Sambhav AI home">
-          <span class="brand-mark" aria-hidden="true">
-            <i></i><i></i><i></i>
-          </span>
-          <span class="brand-name">Sambhav<span>ai</span></span>
-        </a>
-
-        <span class="project-divider"></span>
-
-        <button id="projectNameBtn" class="project-name" type="button">
-          Untitled Website <span>⌄</span>
-        </button>
-      </div>
-
-      <div class="builder-center">
-        <div class="device-switcher" role="group" aria-label="Preview size">
-          <button class="device-button active" data-device="desktop" type="button" title="Desktop" aria-label="Desktop preview">
-            <span class="device-icon desktop-icon"></span>
-          </button>
-          <button class="device-button" data-device="tablet" type="button" title="Tablet" aria-label="Tablet preview">
-            <span class="device-icon tablet-icon"></span>
-          </button>
-          <button class="device-button" data-device="mobile" type="button" title="Mobile" aria-label="Mobile preview">
-            <span class="device-icon mobile-icon"></span>
-          </button>
-        </div>
-      </div>
-
-      <div class="builder-actions">
-        <button id="undoBtn" class="top-action" type="button" title="Undo" aria-label="Undo" disabled>↶</button>
-        <button id="redoBtn" class="top-action" type="button" title="Redo" aria-label="Redo" disabled>↷</button>
-        <button id="refreshBtn" class="top-action" type="button" title="Refresh preview" aria-label="Refresh preview">⟳</button>
-        <span class="top-separator"></span>
-        <button id="previewBtn" class="preview-button" type="button">
-          <span>Preview</span><span aria-hidden="true">↗</span>
-        </button>
-        <button id="exportBtn" class="export-button" type="button">
-          Export HTML <span aria-hidden="true">↓</span>
-        </button>
-      </div>
-    </header>
-
-    <div class="builder-layout">
-      <!-- LEFT SIDEBAR -->
-      <aside class="left-sidebar">
-        <div class="sidebar-tabs" role="tablist" aria-label="Builder sidebar">
-          <button class="sidebar-tab active" data-panel="elements" type="button" role="tab" aria-selected="true">Elements</button>
-          <button class="sidebar-tab" data-panel="layers" type="button" role="tab" aria-selected="false">Layers</button>
-        </div>
-
-        <div id="elementsPanel" class="sidebar-panel">
-          <div class="panel-heading">INSERT <span>＋</span></div>
-
-          <div class="element-grid">
-            <button class="element-card" data-add="text" type="button">
-              <span class="element-icon">T</span>
-              <strong>Text</strong>
-              <small>Heading or paragraph</small>
-            </button>
-
-            <button class="element-card" data-add="button" type="button">
-              <span class="element-icon">↗</span>
-              <strong>Button</strong>
-              <small>Call to action</small>
-            </button>
-
-            <button class="element-card" data-add="card" type="button">
-              <span class="element-icon">▣</span>
-              <strong>Card</strong>
-              <small>Content block</small>
-            </button>
-
-            <button class="element-card" data-add="section" type="button">
-              <span class="element-icon">▤</span>
-              <strong>Section</strong>
-              <small>New container</small>
-            </button>
+      <section class="workspace" id="workspace">
+        <div class="editor-panel">
+          <div class="panel-top">
+            <div class="panel-title">
+              <span class="window-dot red"></span>
+              <span class="window-dot yellow"></span>
+              <span class="window-dot green"></span>
+              <strong>Code editor</strong>
+            </div>
+            <button class="small-button" id="runBtn">▶ Run</button>
           </div>
 
-          <div class="panel-heading quick-heading">QUICK ACTIONS</div>
+          <div class="file-tabs">
+            <button class="file-tab active" data-file="html">◇ index.html</button>
+            <button class="file-tab" data-file="css">✳ style.css</button>
+            <button class="file-tab" data-file="js">⌘ script.js</button>
+          </div>
 
-          <button id="duplicateBtn" class="sidebar-action" type="button">
-            <span aria-hidden="true">▢</span>
-            Duplicate selected <kbd>Ctrl+D</kbd>
-          </button>
+          <div class="code-area">
+            <div class="line-numbers" id="lineNumbers">1</div>
+            <label class="sr-only" for="codeEditor">Edit website source code</label>
+            <textarea id="codeEditor" spellcheck="false"
+              autocapitalize="off" autocomplete="off"
+              aria-label="Website code editor"></textarea>
+          </div>
 
-          <button id="deleteBtn" class="sidebar-action danger" type="button">
-            <span aria-hidden="true">⌫</span>
-            Delete selected
-          </button>
+          <div class="editor-footer">
+            <span id="fileStatus">index.html</span>
+            <span>UTF-8 · <span id="lineCount">1</span> lines</span>
+          </div>
+        </div>
 
-          <div class="sidebar-tip">
-            <span aria-hidden="true">✦</span>
-            <div>
-              <strong>Your canvas, your rules</strong>
-              <small>Click an element in the preview to edit it.</small>
+        <div class="preview-panel" id="previewPanel">
+          <div class="preview-toolbar">
+            <div class="preview-heading">
+              <span class="preview-dot"></span>
+              <strong>Live Preview</strong>
+            </div>
+            <div class="preview-actions">
+              <span id="previewStatus">Ready</span>
+              <button class="small-button" id="refreshBtn" title="Refresh preview">↻</button>
+              <button class="small-button" id="openPreviewBtn" title="Open preview in new tab">↗</button>
             </div>
           </div>
-        </div>
 
-        <div id="layersPanel" class="sidebar-panel hidden" hidden>
-          <div class="panel-heading">PAGE LAYERS</div>
-          <div id="layersList" class="layers-list">
-            <div class="layers-empty">Generate a website to see its layers.</div>
+          <div class="preview-canvas" id="previewCanvas">
+            <iframe id="previewFrame" title="Generated website preview"
+              sandbox="allow-scripts allow-forms allow-modals"
+              referrerpolicy="no-referrer"></iframe>
           </div>
-        </div>
-      </aside>
-
-      <!-- CANVAS WORKSPACE -->
-      <section class="workspace" aria-label="Website canvas">
-        <div class="workspace-toolbar">
-          <div class="workspace-title">
-            <span class="canvas-status"></span>
-            <strong>Canvas</strong>
-            <span class="canvas-subtitle">Live preview</span>
-          </div>
-
-          <div class="workspace-info">
-            <span id="canvasSizeLabel">Desktop · Responsive</span>
-            <span class="zoom-label">100%</span>
-          </div>
-        </div>
-
-        <div id="canvasArea" class="canvas-area">
-          <div id="canvasEmpty" class="canvas-empty">
-            <div class="empty-orb" aria-hidden="true">✦</div>
-            <h3>Your universe starts here.</h3>
-            <p>Generate a website to bring your idea onto the canvas.</p>
-            <button id="emptyGenerateBtn" class="generate-button" type="button">
-              Create my website <span aria-hidden="true">↗</span>
-            </button>
-          </div>
-
-          <div id="deviceFrame" class="device-frame desktop" hidden>
-            <iframe
-              id="websitePreview"
-              title="Generated website preview"
-              sandbox="allow-scripts allow-forms allow-modals allow-popups"
-              referrerpolicy="no-referrer"
-            ></iframe>
-          </div>
-        </div>
-
-        <div class="workspace-bottom">
-          <span><i></i> PREVIEW ENVIRONMENT</span>
-          <span>Changes are editable on canvas</span>
         </div>
       </section>
 
-      <!-- RIGHT INSPECTOR -->
-      <aside class="inspector" id="inspector">
-        <div class="inspector-header">
-          <div>
-            <span class="inspector-kicker">DESIGN CONTROLS</span>
-            <strong id="selectedType">Nothing selected</strong>
-          </div>
-          <button
-            id="closeInspectorBtn"
-            class="inspector-close"
-            type="button"
-            title="Close inspector"
-            aria-label="Close inspector"
-          >×</button>
-        </div>
-
-        <div id="inspectorContent" class="inspector-content">
-          <div class="inspector-empty">
-            <div class="empty-select-icon" aria-hidden="true">⌁</div>
-            <strong>Select an element</strong>
-            <p>Click text or a component inside your preview to adjust it here.</p>
-          </div>
-        </div>
-      </aside>
-    </div>
-
-    <div id="mobileInspectorBar" class="mobile-inspector-bar">
-      <span id="mobileSelectionName">Nothing selected</span>
-      <button id="mobileInspectorOpen" type="button">Edit selection</button>
-    </div>
+      <div class="bottom-bar">
+        <span>✦ <span id="footerMessage">Ready to create your next website.</span></span>
+        <span class="powered">SAMBHAV AI STUDIO</span>
+      </div>
+    </section>
   </main>
 
-  <!-- INSPECTOR TEMPLATE -->
-  <template id="inspectorTemplate">
-    <div class="inspector-section">
-      <div class="section-title">CONTENT <span>01</span></div>
-      <label class="field-label" for="editText">Text content</label>
-      <textarea id="editText" class="field-textarea" rows="4" placeholder="Selected element text…"></textarea>
-    </div>
-
-    <div class="inspector-section">
-      <div class="section-title">TYPOGRAPHY <span>02</span></div>
-      <div class="field-grid">
-        <label class="field-label" for="fontSizeInput">
-          Font size
-          <input id="fontSizeInput" class="field-input" type="number" min="8" max="160" value="16">
-        </label>
-
-        <label class="field-label" for="fontWeightInput">
-          Weight
-          <select id="fontWeightInput" class="field-input">
-            <option value="300">Light</option>
-            <option value="400">Regular</option>
-            <option value="500">Medium</option>
-            <option value="600">Semibold</option>
-            <option value="700">Bold</option>
-            <option value="800">Extra bold</option>
-            <option value="900">Black</option>
-          </select>
-        </label>
-      </div>
-    </div>
-
-    <div class="inspector-section">
-      <div class="section-title">COLORS <span>03</span></div>
-
-      <div class="color-control">
-        <label for="textColorInput">Text</label>
-        <div class="color-picker-wrap">
-          <input id="textColorInput" type="color" value="#ffffff">
-          <input id="textColorText" class="color-text-input" type="text" value="#ffffff" maxlength="7" aria-label="Text color hex value">
-        </div>
-      </div>
-
-      <div class="color-control">
-        <label for="backgroundColorInput">Background</label>
-        <div class="color-picker-wrap">
-          <input id="backgroundColorInput" type="color" value="#111111">
-          <input id="backgroundColorText" class="color-text-input" type="text" value="#111111" maxlength="7" aria-label="Background color hex value">
-        </div>
-      </div>
-    </div>
-
-    <div class="inspector-section">
-      <div class="section-title">SPACING <span>04</span></div>
-      <div class="field-grid">
-        <label class="field-label" for="paddingInput">
-          Padding (px)
-          <input id="paddingInput" class="field-input" type="number" min="0" max="200" value="0">
-        </label>
-
-        <label class="field-label" for="radiusInput">
-          Corner radius
-          <input id="radiusInput" class="field-input" type="number" min="0" max="200" value="0">
-        </label>
-      </div>
-    </div>
-
-    <div class="inspector-section">
-      <div class="section-title">APPEARANCE <span>05</span></div>
-      <label class="toggle-row" for="shadowInput">
-        <span>Drop shadow</span>
-        <input id="shadowInput" type="checkbox">
-        <span class="toggle" aria-hidden="true"></span>
-      </label>
-    </div>
-
-    <div class="inspector-actions">
-      <button id="resetElementBtn" class="secondary-button" type="button">
-        Reset element styles
-      </button>
-    </div>
-  </template>
-
-  <!-- STATUS TOAST -->
-  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true">
-    <span class="toast-icon" aria-hidden="true">✦</span>
-    <span id="toastText">Done</span>
-  </div>
-
-  <script src="./script.js" defer></script>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
