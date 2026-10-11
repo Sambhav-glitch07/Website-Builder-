@@ -405,7 +405,7 @@ const editorScript = `
 
   send("ready");
 })();
-<\\/script>`;
+<\/script>`;
 
     const editorCSS = `
 <style data-sambhav-editor>
@@ -683,46 +683,72 @@ toast("Element added.");
 
 }
 
+
 function requestExport(openPreview = false) {
-if (!currentHTML) {
-toast("Generate a website before exporting.");
-return;
-}
-
-const handler = event => {
-  if (
-    event.source !== el.preview?.contentWindow ||
-    event.data?.source !== "sambhav-editor" ||
-    event.data?.token !== editorToken ||
-    event.data?.type !== "exported"
-  ) return;
-
-  window.removeEventListener("message", handler);
-  clearTimeout(exportTimeout);
-
-  const html = event.data.html;
-
-  if (typeof html !== "string" || !html.trim()) {
-    toast("Could not prepare the export.");
+  if (!currentHTML) {
+    toast("Generate a website before exporting.");
     return;
   }
 
-  currentHTML = html;
-
-  const blob = new Blob([html], {
-    type: "text/html;charset=utf-8"
-  });
-
-  const url = URL.createObjectURL(blob);
+  // Open the tab immediately so the browser doesn't block the preview.
+  let previewTab = null;
 
   if (openPreview) {
-    const tab = window.open(url, "_blank");
+    previewTab = window.open("about:blank", "_blank");
 
-    if (!tab) toast("Allow pop-ups to open the website preview.");
+    if (!previewTab) {
+      toast("Allow pop-ups to open the website preview.");
+      return;
+    }
+  }
 
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  } else {
+  const handler = event => {
+    if (
+      event.source !== el.preview?.contentWindow ||
+      event.data?.source !== "sambhav-editor" ||
+      event.data?.token !== editorToken ||
+      event.data?.type !== "exported"
+    ) return;
+
+    window.removeEventListener("message", handler);
+    clearTimeout(exportTimeout);
+
+    const html = event.data.html;
+
+    if (typeof html !== "string" || !html.trim()) {
+      previewTab?.close();
+      toast("Could not prepare the website.");
+      return;
+    }
+
+    currentHTML = html;
+
+    if (openPreview) {
+      const blob = new Blob([html], {
+        type: "text/html;charset=utf-8"
+      });
+
+      const url = URL.createObjectURL(blob);
+
+      try {
+        previewTab.location.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } catch (error) {
+        URL.revokeObjectURL(url);
+        previewTab.close();
+        toast("Could not open the website preview.");
+      }
+
+      return;
+    }
+
+    const blob = new Blob([html], {
+      type: "text/html;charset=utf-8"
+    });
+
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
+
     link.href = url;
     link.download = safeFilename(projectName) + ".html";
 
@@ -731,20 +757,20 @@ const handler = event => {
     link.remove();
 
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast("Exported " + safeFilename(projectName) + ".html");
-  }
-};
+    toast("Website exported successfully.");
+  };
 
-clearTimeout(exportTimeout);
-window.addEventListener("message", handler);
-sendToFrame("export");
+  clearTimeout(exportTimeout);
+  window.addEventListener("message", handler);
+  sendToFrame("export");
 
-exportTimeout = setTimeout(() => {
-  window.removeEventListener("message", handler);
-  toast("Export timed out. Refresh the preview and try again.");
-}, 5000);
-
+  exportTimeout = setTimeout(() => {
+    window.removeEventListener("message", handler);
+    previewTab?.close();
+    toast("Preview timed out. Check the editor script and refresh.");
+  }, 5000);
 }
+
 
 window.addEventListener("message", event => {
 if (
