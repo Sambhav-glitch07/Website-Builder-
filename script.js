@@ -194,22 +194,30 @@ const editorScript = `
     });
   }
 
-  document.addEventListener("click", event => {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    if (target.closest("[data-sambhav-editor]")) return;
+  
+document.addEventListener("click", event => {
+  const target = event.target;
 
-    const node = target.closest(
-      "h1,h2,h3,h4,h5,h6,p,span,a,button,li,small,strong,em," +
-      "blockquote,img,figure,article,section,div"
-    );
+  if (!(target instanceof Element)) return;
+  if (target.closest("[data-sambhav-editor]")) return;
 
-    if (!node || node === document.body) return;
+  const node = target.closest(
+    "h1,h2,h3,h4,h5,h6,p,span,a,button,li,small,strong,em," +
+    "blockquote,img,figure,article,section,div,input,textarea,label"
+  );
 
-    event.preventDefault();
-    event.stopPropagation();
-    selectElement(node);
-  }, true);
+  if (!node) return;
+  if (
+    node === document.body ||
+    node === document.documentElement ||
+    node.closest("[data-sambhav-editor]")
+  ) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  selectElement(node);
+}, true);
 
   window.addEventListener("message", event => {
     const msg = event.data;
@@ -781,6 +789,7 @@ if (data.type === "ready") {
 }
 
 if (data.type === "selected") {
+  console.log("Sambhav selected element:", data);
   updateSelection(data);
   return;
 }
