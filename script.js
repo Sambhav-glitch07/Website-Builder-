@@ -1030,13 +1030,17 @@ $("#closeInspectorBtn")?.addEventListener("click", () => {
 el.inspector?.classList.toggle("closed");
 });
 
+
 $("#mobileInspectorOpen")?.addEventListener("click", () => {
-el.inspector?.classList.remove("closed");
-el.inspector?.scrollIntoView({
-behavior: "smooth",
-block: "nearest"
+  el.inspector?.classList.add("open");
+  el.inspector?.classList.remove("closed");
+
+  el.inspector?.scrollIntoView({
+    behavior: "smooth",
+    block: "nearest"
+  });
 });
-});
+
 
 $$(".sidebar-tab").forEach(button => {
 button.addEventListener("click", () => {
