@@ -1027,7 +1027,8 @@ toast("Element deleted.");
 });
 
 $("#closeInspectorBtn")?.addEventListener("click", () => {
-el.inspector?.classList.toggle("closed");
+  el.inspector?.classList.remove("open");
+  el.inspector?.classList.add("closed");
 });
 
 
