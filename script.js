@@ -111,7 +111,7 @@ aria-label="Created by Sambhav AI"
 
 «»
 
-<span class="sambhav-mark">S</span>
+<span class="sambhav-mark"></span>
 <span>Created by Sambhav AI</span>
 </a>`;
 
